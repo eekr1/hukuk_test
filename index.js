@@ -801,6 +801,11 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
   if (out?.request?.summary && /Bilgilerinizi aldım/i.test(out.request.summary)) {
     out.request.summary = "Randevu talebi";
   }
+  
+const stripFenced = (s = "") => String(s).replace(/```[\s\S]*?```/g, "").trim();
+
+if (out?.request?.summary) out.request.summary = stripFenced(out.request.summary);
+if (out?.request?.details) out.request.details = stripFenced(out.request.details);
 
   return out;
 }
@@ -1249,45 +1254,52 @@ console.log("[handoff] PREP(stream-end)", {
 
 
 if (handoff) {
+  // --- GATE: mail gönderimi için mantık ---
+  const userText = message;            // req.body.message (son kullanıcı mesajı)
+  const assistantText = accTextOriginal;
 
-   // --- GATE: mail gönderimi için mantık ---
-// 1) Asistan "onay verirsen iletebilirim" diyorsa: gönderme
-// 2) Kullanıcı açık onay verdiyse: gönder
-// 3) Kullanıcı ad+telefon verip asistan da "iletiyorum/ileteceğim/iletildi" diyorsa: gönder (implicit onay)
+  const explicitOk = userApprovedHandoff(userText);
 
-const userText = message;           // req.body.message
-const assistantText = accTextOriginal;
+  // ✅ implicit: ya kullanıcı mesajından kontakt yakala ya da handoff payload içinden
+  const hasContact =
+    userProvidedContactInfo(userText) ||
+    !!(handoff?.payload?.contact?.phone && String(handoff.payload.contact.phone).trim()) ||
+    !!(handoff?.payload?.contact?.name && String(handoff.payload.contact.name).trim());
 
-const explicitOk = userApprovedHandoff(userText);
-const implicitOk = userProvidedContactInfo(userText) && assistantIndicatesSending(assistantText);
+  const implicitOk = hasContact && assistantIndicatesSending(assistantText);
 
-if (assistantAskingApproval(assistantText) && !explicitOk) {
-  console.log("[handoff][gate][stream] blocked (assistant asking approval)");
-  handoff = null;
-} else if (handoff && !(explicitOk || implicitOk)) {
-  console.log("[handoff][gate][stream] blocked (no explicit approval and no implicit contact-based approval)");
-  handoff = null;
-}
+  if (assistantAskingApproval(assistantText) && !explicitOk) {
+    console.log("[handoff][gate][stream] blocked (assistant asking approval)");
+    handoff = null;
+  } else if (!(explicitOk || implicitOk)) {
+    console.log("[handoff][gate][stream] blocked (no explicit approval and no implicit contact-based approval)");
+    handoff = null;
+  }
 
   if (handoff && isDuplicateHandoff(threadId, handoff.payload)) {
     console.log("[handoff][gate][stream] blocked duplicate payload");
     handoff = null;
   }
 
-  try {
-    
-    const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
-    await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
-    console.log("[handoff][stream] SENT");
-  } catch (e) {
-    console.error("[handoff][stream] email failed or dropped:", {
-      message: e?.message, code: e?.code
-    });
-    console.error("[handoff][stream] payload snapshot:", JSON.stringify(handoff?.payload || {}, null, 2));
-
+  // ✅ KRİTİK: gate sonrası handoff null ise try’a girme
+  if (!handoff) {
+    console.log("[handoff][stream] not sending (gated)");
+  } else {
+    try {
+      const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
+      await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
+      console.log("[handoff][stream] SENT");
+    } catch (e) {
+      console.error("[handoff][stream] email failed or dropped:", {
+        message: e?.message,
+        code: e?.code,
+      });
+      console.error(
+        "[handoff][stream] payload snapshot:",
+        JSON.stringify(handoff?.payload || {}, null, 2)
+      );
+    }
   }
-} else {
-  console.log("[handoff][stream] no handoff block/signal found");
 }
 
 // 🔵 BURAYA: assistant cevabını logla
@@ -1491,25 +1503,32 @@ if (assistantAskingApproval(assistantText) && !explicitOk) {
   }
 
 
+  if (!handoff) {
+  console.log("[handoff][poll] not sending (gated)");
+} else {
   try {
-
     const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
 
     await sendHandoffEmail({
-      brandKey,            // ✅ EKLENDİ
+      brandKey,
       kind: handoff.kind,
       payload: clean,
-      brandCfg
+      brandCfg,
     });
 
     console.log("[handoff][poll] SENT", { kind: handoff.kind });
   } catch (e) {
     console.error("[handoff][poll] email failed or dropped:", {
-      message: e?.message, code: e?.code
+      message: e?.message,
+      code: e?.code,
     });
-    console.error("[handoff][stream] payload snapshot:", JSON.stringify(handoff?.payload || {}, null, 2));
-
+    console.error(
+      "[handoff][poll] payload snapshot:",
+      JSON.stringify(handoff?.payload || {}, null, 2)
+    );
   }
+}
+
 
   
   // Kullanıcıya dönen metinden gizli blokları temizle (defensive)
