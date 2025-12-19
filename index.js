@@ -335,6 +335,9 @@ function buildRunInstructions(brandKey, brandCfg = {}) {
     `- If a knowledge base/policies/SSS document exists, use it as the source of truth.`,
     `- If you do not have a reliable source for a specific claim, do NOT invent it. Say you need attorney review.`,
     `- Prefer: "Genelde süreç şu şekildedir..." + "Sizin dosyanız için avukat değerlendirmesi gerekir."`,
+    ` Working hours: Weekdays 09:00–18:00 Initial consultation: By appointment only Online consultation: Possible in suitable cases`,
+
+
     ``,
 
     `PRACTICE AREAS (CLASSIFY THE TOPIC)`,
@@ -575,6 +578,17 @@ function resolveEmailRouting(brandCfg) {
 
 function sanitizeHandoffPayload(payload, kind, brandCfg) {
   const out = JSON.parse(JSON.stringify(payload || {})); // deep copy
+  
+  // ✅ Model bazen wrapper objeyi ({handoff, payload}) döndürür.
+  // Bu durumda asıl veriyi out.payload içinden al.
+  if (out && typeof out === "object" && out.payload && (out.handoff || out.kind || out.type)) {
+    // out = out.payload yapmak için yeniden kopyalayalım (const olduğu için yeni değişkenle)
+    const unwrapped = JSON.parse(JSON.stringify(out.payload || {}));
+    // out değişkeni const olduğu için burada return ile devam etmek yerine
+    // aşağıdaki satırdan itibaren unwrapped üzerinden ilerleyeceğiz.
+    // Bu yüzden out yerine kullanılacak bir "data" değişkeni tanımlayalım:
+    return sanitizeHandoffPayload(unwrapped, kind, brandCfg);
+  }
 
   // 1) Markanın kendi e-postasını "müşteri maili" gibi koymayı engelle
   const brandEmails = [
@@ -895,38 +909,49 @@ let accTextOriginal = "";   // e-posta/parse için ORİJİNAL metin
 const decoder = new TextDecoder();
 const reader  = upstream.body.getReader();
 
-// Tüm üçlü backtick bloklarını (\`\`\` … \`\`\`) gizlemek için stateful sanitizer
-let inFencedBlock = false; // herhangi bir (\`\`\` … \`\`\`) bloğunun içindeyiz
+
+// Tüm üçlü backtick bloklarını (``` … ```) gizlemek için stateful sanitizer
+let inFencedBlock = false; // herhangi bir (``` … ```) bloğunun içindeyiz
+let fenceTail = "";        // chunk sınırlarında ``` yakalamak için son 2 karakter buffer
 
 function sanitizeDeltaText(chunk) {
+  if (!chunk) return "";
+
+  // Chunk boundary fix: önceki parçadan kalan son 2 char’ı başa ekle
+  const merged = fenceTail + chunk;
+  // Bir sonraki tur için merged’in son 2 char’ını sakla (``` yakalamak için yeterli)
+  fenceTail = merged.slice(-2);
+
   let out = "";
   let i = 0;
-  while (i < chunk.length) {
+
+  while (i < merged.length) {
     if (!inFencedBlock) {
-      const start = chunk.indexOf("```", i);
+      const start = merged.indexOf("```", i);
       if (start === -1) {
-        out += chunk.slice(i);
+        out += merged.slice(i);
         break;
       }
-      // fence'e kadar olan kısmı geçir
-      out += chunk.slice(i, start);
-
-      // fence başladı -> kullanıcıya göstermeyeceğiz
+      out += merged.slice(i, start);
       inFencedBlock = true;
-      i = start + 3; // ``` sonrası
+      i = start + 3;
     } else {
-      // fence içindeyiz -> kapanış ``` ara
-      const end = chunk.indexOf("```", i);
+      const end = merged.indexOf("```", i);
       if (end === -1) {
-        // kapanış yoksa bu chunk'ı yut
-        return out;
+        // fence içindeyiz, kapanış bu chunk’ta yok: tamamını yut
+        break;
       }
-      // kapanışı bulduk -> bloğu atla ve devam et
       inFencedBlock = false;
       i = end + 3;
     }
   }
-  return out;
+
+  // IMPORTANT: out’un başındaki fenceTail’a ait kısım “yeniden” kullanıcıya gitmesin.
+  // Çünkü fenceTail önceki chunk’ın devamıydı.
+  const safeOut = out.slice(fenceTail.length ? 0 : 0);
+
+  // Not: fenceTail sadece arama için; kullanıcıya ait olmayan bir şey basmıyoruz.
+  return safeOut;
 }
 
 
@@ -995,6 +1020,9 @@ while (true) {
         for (const c of arr) {
           if (c?.type === "text" && c?.text?.value) {
             c.text.value = sanitizeDeltaText(c.text.value);
+            // defensive: "handoff" kelimesi geçen fenced parçalar bazen fence’siz sızabilir
+         c.text.value = c.text.value.replace(/```handoff[\s\S]*?```/gi, "");
+
           }
         }
       };
@@ -1358,3 +1386,4 @@ const server = app.listen(PORT, () => {
 server.headersTimeout = 120_000;   // header bekleme
 server.requestTimeout = 0;          // request toplam sÃ¼resini sÄ±nÄ±rsÄ±z yap (Node 18+)
 server.keepAliveTimeout = 75_000;   // TCP keep-alive
+
