@@ -910,35 +910,41 @@ const decoder = new TextDecoder();
 const reader  = upstream.body.getReader();
 
 
-// Tüm üçlü backtick bloklarını (``` … ```) gizlemek için stateful sanitizer
-let inFencedBlock = false; // herhangi bir (``` … ```) bloğunun içindeyiz
-let fenceTail = "";        // chunk sınırlarında ``` yakalamak için son 2 karakter buffer
+// Fenced blocks (``` ... ```) gizleme + chunk boundary fix (tail overlap yok)
+let inFencedBlock = false;
+let fenceTail = ""; // sadece "```" yakalamak için, kullanıcıya BASILMAZ
 
 function sanitizeDeltaText(chunk) {
   if (!chunk) return "";
 
-  // Chunk boundary fix: önceki parçadan kalan son 2 char’ı başa ekle
-  const merged = fenceTail + chunk;
-  // Bir sonraki tur için merged’in son 2 char’ını sakla (``` yakalamak için yeterli)
-  fenceTail = merged.slice(-2);
+  const tailLen = fenceTail.length;      // genelde 2
+  const merged = fenceTail + chunk;      // sadece arama amacıyla birleştiriyoruz
+  fenceTail = merged.slice(-2);          // sonraki chunk için son 2 karakteri sakla
 
   let out = "";
   let i = 0;
+
+  // Yardımcı: merged içinden parça eklerken tail kısmını ASLA kullanıcıya ekleme
+  const appendSafe = (from, to) => {
+    const a = Math.max(from, tailLen);
+    const b = Math.max(to, tailLen);
+    if (b > a) out += merged.slice(a, b);
+  };
 
   while (i < merged.length) {
     if (!inFencedBlock) {
       const start = merged.indexOf("```", i);
       if (start === -1) {
-        out += merged.slice(i);
+        appendSafe(i, merged.length);
         break;
       }
-      out += merged.slice(i, start);
+      appendSafe(i, start);
       inFencedBlock = true;
       i = start + 3;
     } else {
       const end = merged.indexOf("```", i);
       if (end === -1) {
-        // fence içindeyiz, kapanış bu chunk’ta yok: tamamını yut
+        // fence içindeyiz; bu chunk’ta kapanış yok -> kalan her şeyi yut
         break;
       }
       inFencedBlock = false;
@@ -946,13 +952,9 @@ function sanitizeDeltaText(chunk) {
     }
   }
 
-  // IMPORTANT: out’un başındaki fenceTail’a ait kısım “yeniden” kullanıcıya gitmesin.
-  // Çünkü fenceTail önceki chunk’ın devamıydı.
-  const safeOut = out.slice(fenceTail.length ? 0 : 0);
-
-  // Not: fenceTail sadece arama için; kullanıcıya ait olmayan bir şey basmıyoruz.
-  return safeOut;
+  return out;
 }
+
 
 
 
@@ -1386,4 +1388,5 @@ const server = app.listen(PORT, () => {
 server.headersTimeout = 120_000;   // header bekleme
 server.requestTimeout = 0;          // request toplam sÃ¼resini sÄ±nÄ±rsÄ±z yap (Node 18+)
 server.keepAliveTimeout = 75_000;   // TCP keep-alive
+
 
