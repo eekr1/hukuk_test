@@ -427,31 +427,29 @@ async function openAI(path, { method = "GET", body } = {}) {
 
 // Assistant yanıtından handoff JSON çıkar
 
-// --- Metinden handoff çıkarımı (fallback) ---
-// Model handoff bloğu üretmediyse, müşteri temsilcisine devri gerektiren
-// ifadeleri yakalayıp minimal bir handoff objesi döner.
 // --- Metinden handoff çıkarımı (fallback - sade & güvenli) ---
+// Model handoff bloğu üretmediyse, metinden name/phone/summary üretir.
+// NOT: Bu fallback, asistanın "form soruları" veya "onay sorusu" çıktılarında çalışmaz.
 function inferHandoffFromText(text) {
   if (!text) return null;
 
   // Explicit handoff varsa fallback çalışmasın
   if (/```[\s\S]*"handoff"\s*:/.test(text)) return null;
 
-  // Asistanın kendi form/soru/özet şablonlarında tetikleme
+  // Asistanın kendi form/soru/özet şablonlarında tetikleme (bunlar handoff değildir)
   const isAssistantFormAsk =
     /lütfen.*(aşağıdaki|bilgileri).*paylaşır mısınız/i.test(text) ||
-    /1\.\s*ad[ıi]n[ıi]z/i.test(text) ||
+    /1\.\s*ad[ıi]\s*soyad/i.test(text) ||
     /2\.\s*telefon/i.test(text) ||
-    /3\.\s*e-?posta/i.test(text);
+    /3\.\s*e-?posta/i.test(text) ||
+    /aşağıdaki bilgileri paylaşabilir misiniz/i.test(text);
 
   const isAssistantConfirm =
-    /ön görüşme talebinizi.*özetleyeyim/i.test(text) ||
-    /iletişim talebinizi.*özetleyeyim/i.test(text) ||
-    /onaylıyor musunuz/i.test(text);
+    /onay verirseniz|onaylıyor musunuz|iletmemi ister misiniz|iletebilirim/i.test(text);
 
   if (isAssistantFormAsk || isAssistantConfirm) return null;
 
-  // En az bir iletişim bilgisi yoksa handoff üretme
+  // Telefon / Email yakala (en az biri yoksa handoff üretme)
   const phoneMatch = text.match(/(\+?\d[\d\s().-]{9,}\d)/);
   const emailMatch = text.match(/[^\s@]+@[^\s@]+\.[^\s@]+/);
 
@@ -460,9 +458,26 @@ function inferHandoffFromText(text) {
   const phone = phoneMatch ? phoneMatch[1].trim() : undefined;
   const email = emailMatch ? emailMatch[0].trim() : undefined;
 
-  const nameMatch = text.match(/(?:ad[ıi]\s*[:\-]\s*|(?:ben|isim|adım)\s+)([^\n,]+)/i);
+  // ✅ NAME yakalama (senin örnekte "İletişim: Enis Kuru, 0546..." geçiyor)
+  let name = undefined;
 
-  // Hukuk alanı (çok basit sinyal yakalama)
+  // 1) "İletişim: Ad Soyad, 05xx" formatı
+  const mContactLine = text.match(/İletişim\s*:\s*([^\n,]+)\s*,\s*(\+?\d[\d\s().-]{9,}\d)/i);
+  if (mContactLine?.[1]) name = mContactLine[1].trim();
+
+  // 2) "Ad Soyad: ..." formatı
+  if (!name) {
+    const mName = text.match(/ad\s*soyad\s*[:\-]\s*([^\n,]+)/i);
+    if (mName?.[1]) name = mName[1].trim();
+  }
+
+  // 3) "Adım/İsim ..." formatı (son çare)
+  if (!name) {
+    const mName2 = text.match(/(?:benim\s+adım|adım|isim|ismim)\s*[:\-]?\s*([^\n,]+)/i);
+    if (mName2?.[1]) name = mName2[1].trim();
+  }
+
+  // ✅ CATEGORY sinyali
   const lower = text.toLowerCase();
   let category = "diger";
   if (/boşan|velayet|nafaka|mal rejimi/.test(lower)) category = "aile";
@@ -472,17 +487,34 @@ function inferHandoffFromText(text) {
   else if (/tazminat|trafik kazası|maddi|manevi/.test(lower)) category = "tazminat";
   else if (/ceza|savcılık|ifade|duruşma|şikayet/.test(lower)) category = "ceza";
 
-  // Özet: ilk satırdan kısa bir başlık türet
-  const firstLine = (text.split("\n").find(Boolean) || "").trim();
-  const summary = firstLine.length > 120 ? firstLine.slice(0, 120) + "…" : firstLine;
+  const urgency = /acil|bugün|yarın|son gün|tebligat|ifade|duruşma/i.test(text) ? "acil" : "normal";
+
+  // ✅ SUMMARY: "Olay Özeti:" satırını yakala; yoksa ilk anlamlı cümle
+  let summary = "";
+  const mOlay = text.match(/Olay\s*Özeti\s*:\s*([^\n]+)/i);
+  if (mOlay?.[1]) summary = mOlay[1].trim();
+
+  if (!summary) {
+    const firstMeaningful = text
+      .split("\n")
+      .map(x => x.trim())
+      .find(x =>
+        x &&
+        !x.startsWith("-") &&
+        !/hukuk dalı|kritik tarih|belge|şehir|iletişim|görüşme tercihi/i.test(x.toLowerCase())
+      );
+    summary = firstMeaningful ? firstMeaningful.slice(0, 160) : "";
+  }
+
+  if (!summary) summary = "Hukuk Talebi";
 
   return {
     kind: "customer_request",
     payload: {
-      contact: { phone, email, name: nameMatch?.[1]?.trim() },
-      matter: { category, urgency: /acil|bugün|yarın|son gün|tebligat/i.test(text) ? "acil" : "normal" },
+      contact: { name, phone, email },
+      matter: { category, urgency },
       request: {
-        summary: summary || "Hukuk Talebi",
+        summary,
         details: text.length > 4000 ? text.slice(-4000) : text
       }
     }
@@ -493,7 +525,35 @@ function extractHandoff(text = "") {
   try {
     if (!text || typeof text !== "string") return null;
 
-    // 1) ```handoff ... ``` fenced block
+    // 0) TÜM fenced blokları tara: ``` ... ```
+    // Model bazen ```handoff etiketi koymadan JSON basar.
+    const blocks = text.match(/```[\s\S]*?```/g) || [];
+    for (const block of blocks) {
+      const inner = block
+        .replace(/^```[a-zA-Z0-9_-]*\s*/m, "")
+        .replace(/```$/m, "")
+        .trim();
+
+      if (!inner) continue;
+      if (!/"handoff"\s*:|handoff\s*:/i.test(inner)) continue;
+
+      try {
+        const obj = JSON.parse(inner);
+
+        const handoffVal = obj.handoff || obj.kind || obj.type || "customer_request";
+        const kind =
+          (handoffVal === "reservation" || handoffVal === "reservation_request")
+            ? "customer_request"
+            : handoffVal;
+
+        const payload = obj.payload ? obj.payload : obj;
+        return { kind, payload };
+      } catch (_) {
+        // parse olmadıysa sonraki fence'e bak
+      }
+    }
+
+    // 1) ```handoff ... ``` fenced block (eski kural; yine dursun)
     const fence = text.match(/```handoff\s*([\s\S]*?)```/i);
     if (fence?.[1]) {
       const raw = fence[1].trim();
@@ -502,30 +562,10 @@ function extractHandoff(text = "") {
 
       if (obj && typeof obj === "object") {
         const handoffVal = obj.handoff || obj.kind || obj.type || null;
-
         const kind =
           (handoffVal === "reservation" || handoffVal === "reservation_request")
             ? "customer_request"
             : (handoffVal || "customer_request");
-
-        const payload = obj.payload ? obj.payload : obj;
-        return { kind, payload };
-      }
-    }
-    // 1b) Genel fenced block: ``` ... ``` (bazı modeller ```handoff yazmadan JSON basabiliyor)
-    // Eğer fenced içerik "handoff" anahtarı içeriyorsa parse etmeyi dene.
-    const anyFence = text.match(/```\s*([\s\S]*?)```/);
-    if (anyFence?.[1] && /"handoff"\s*:|handoff\s*:/i.test(anyFence[1])) {
-      const raw = anyFence[1].trim();
-      let obj = null;
-      try { obj = JSON.parse(raw); } catch (_) {}
-
-      if (obj && typeof obj === "object") {
-        const handoffVal = obj.handoff || obj.kind || obj.type || "customer_request";
-        const kind =
-          (handoffVal === "reservation" || handoffVal === "reservation_request")
-            ? "customer_request"
-            : handoffVal;
 
         const payload = obj.payload ? obj.payload : obj;
         return { kind, payload };
@@ -567,10 +607,6 @@ function extractHandoff(text = "") {
     return null;
   }
 }
-
-
-
-
 
 // ---- Resolve "to" & "from" with safe fallbacks ----
 function resolveEmailRouting(brandCfg) {
