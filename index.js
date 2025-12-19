@@ -512,6 +512,25 @@ function extractHandoff(text = "") {
         return { kind, payload };
       }
     }
+    // 1b) Genel fenced block: ``` ... ``` (bazı modeller ```handoff yazmadan JSON basabiliyor)
+    // Eğer fenced içerik "handoff" anahtarı içeriyorsa parse etmeyi dene.
+    const anyFence = text.match(/```\s*([\s\S]*?)```/);
+    if (anyFence?.[1] && /"handoff"\s*:|handoff\s*:/i.test(anyFence[1])) {
+      const raw = anyFence[1].trim();
+      let obj = null;
+      try { obj = JSON.parse(raw); } catch (_) {}
+
+      if (obj && typeof obj === "object") {
+        const handoffVal = obj.handoff || obj.kind || obj.type || "customer_request";
+        const kind =
+          (handoffVal === "reservation" || handoffVal === "reservation_request")
+            ? "customer_request"
+            : handoffVal;
+
+        const payload = obj.payload ? obj.payload : obj;
+        return { kind, payload };
+      }
+    }
 
     // 2) <handoff>{...}</handoff>
     const tag = text.match(/<handoff>\s*([\s\S]*?)\s*<\/handoff>/i);
@@ -1388,5 +1407,6 @@ const server = app.listen(PORT, () => {
 server.headersTimeout = 120_000;   // header bekleme
 server.requestTimeout = 0;          // request toplam sÃ¼resini sÄ±nÄ±rsÄ±z yap (Node 18+)
 server.keepAliveTimeout = 75_000;   // TCP keep-alive
+
 
 
