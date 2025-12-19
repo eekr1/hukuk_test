@@ -721,6 +721,105 @@ function resolveEmailRouting(brandCfg) {
   return { to, from, fromName };
 }
 
+function normalizeHandoffPayload(payload = {}) {
+  const out = JSON.parse(JSON.stringify(payload || {}));
+
+  // --- Helpers ---
+  const toStr = (v) => (v == null ? "" : String(v));
+  const clean = (s) => toStr(s).replace(/\s+/g, " ").trim();
+
+  const normalizePhone = (p) => {
+    const s = clean(p);
+    if (!s) return { raw: "", digits: "" };
+    const digits = s.replace(/\D/g, "");
+    return { raw: s, digits };
+  };
+
+  const stripFences = (s) => toStr(s).replace(/```[\s\S]*?```/g, "").trim();
+
+  // --- Gather candidate texts ---
+  const summaryText = stripFences(out?.request?.summary || out?.summary || "");
+  const detailsText = stripFences(out?.request?.details || out?.details || "");
+  const combined = clean([summaryText, detailsText].filter(Boolean).join("\n"));
+
+  // --- Phone ---
+  const phoneRaw = clean(out?.contact?.phone || out?.phone || "");
+  const phoneFromFields = normalizePhone(phoneRaw);
+
+  // Metnin içinde telefon yakala (etiketsiz girişlerde yardımcı olur)
+  let phoneFromTextRaw = "";
+  const mPhone = combined.match(/(\+?\d[\d\s().-]{9,}\d)/);
+  if (mPhone?.[1]) phoneFromTextRaw = mPhone[1];
+
+  const phoneFromText = normalizePhone(phoneFromTextRaw);
+
+  const finalPhoneRaw = phoneFromFields.raw || phoneFromText.raw;
+  const finalPhoneDigits = phoneFromFields.digits || phoneFromText.digits;
+
+  // --- Name ---
+  let name = clean(out?.contact?.name || out?.full_name || out?.name || "");
+
+  // 1) Etiketli formatlar: "Ad Soyad: X", "İsim: X", "Benim adım X"
+  if (!name) {
+    const m1 = combined.match(/ad\s*soyad\s*[:\-]\s*([^\n,]+)/i);
+    if (m1?.[1]) name = clean(m1[1]);
+  }
+  if (!name) {
+    const m2 = combined.match(/(?:benim\s+adım|adım|isim|ismim)\s*[:\-]?\s*([^\n,]+)/i);
+    if (m2?.[1]) name = clean(m2[1]);
+  }
+
+  // 2) İletişim satırı: "İletişim: Enis Kuru, 0546..."
+  if (!name) {
+    const m3 = combined.match(/iletişim\s*:\s*([^\n,]+)\s*,\s*(\+?\d[\d\s().-]{9,}\d)/i);
+    if (m3?.[1]) name = clean(m3[1]);
+  }
+
+  // 3) “Düz yazı” isim yakalama (telefonun önü değil; isim formatı + harf filtresi)
+  // Örn: "enis kuru 0546..." -> iki kelimelik harf ağırlıklı bir isim yakalar
+  if (!name && combined) {
+    const m4 = combined.match(/(^|\n)\s*([a-zA-ZığüşöçİĞÜŞÖÇ]{2,}\s+[a-zA-ZığüşöçİĞÜŞÖÇ]{2,}(?:\s+[a-zA-ZığüşöçİĞÜŞÖÇ]{2,})?)\s+(\+?\d[\d\s().-]{9,}\d)/);
+    if (m4?.[2]) name = clean(m4[2]);
+  }
+
+  // Name’i düzgün büyük/küçük harfe çek (TR karakterleri korur)
+  if (name) {
+    name = name
+      .split(/\s+/)
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ");
+  }
+
+  // --- Summary ---
+  let summary = clean(summaryText);
+  if (!summary || /bilgilerinizi aldım/i.test(summary)) {
+    summary = clean(detailsText);
+  }
+  // Çok uzunsa kısalt
+  if (summary.length > 180) summary = summary.slice(0, 180) + "…";
+
+  // --- Details ---
+  let details = clean(detailsText || summaryText);
+  // Çok uzunsa kısalt (mail şişmesin)
+  if (details.length > 900) details = details.slice(0, 900) + "…";
+
+  // --- Apply back to payload ---
+  out.contact = out.contact || {};
+  if (!out.contact.name && name) out.contact.name = name;
+  if (!out.contact.phone && finalPhoneRaw) out.contact.phone = finalPhoneRaw;
+
+  out.request = out.request || {};
+  if (!out.request.summary && summary) out.request.summary = summary;
+  if (!out.request.details && details) out.request.details = details;
+
+  // Eski summary/details varsa fence temizle
+  if (out.request.summary) out.request.summary = stripFences(out.request.summary);
+  if (out.request.details) out.request.details = stripFences(out.request.details);
+
+  return out;
+}
+
+
 function sanitizeHandoffPayload(payload, kind, brandCfg) {
   const out = JSON.parse(JSON.stringify(payload || {})); // deep copy
   
@@ -756,6 +855,11 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
   }
 
   // 2) Hukuk botu: handoff minimum doğrulama (customer_request / case_intake)
+    // ✅ Normalize (kök çözüm): name/phone/summary alanlarını tek yerde toparla
+  const normalized = normalizeHandoffPayload(out);
+  // out const olduğu için alanları overwrite ediyoruz
+  Object.assign(out, normalized);
+
   // - En az: name + phone + summary
   const name =
     (out?.contact?.name || out?.full_name || "").toString().trim();
@@ -801,7 +905,7 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
   if (out?.request?.summary && /Bilgilerinizi aldım/i.test(out.request.summary)) {
     out.request.summary = "Randevu talebi";
   }
-  
+
 const stripFenced = (s = "") => String(s).replace(/```[\s\S]*?```/g, "").trim();
 
 if (out?.request?.summary) out.request.summary = stripFenced(out.request.summary);
