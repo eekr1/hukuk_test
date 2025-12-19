@@ -424,6 +424,37 @@ async function openAI(path, { method = "GET", body } = {}) {
   return res.json();
 }
 
+// ============ HANDOFF GATE HELPERS (mail sadece açık onayla) ============
+function userApprovedHandoff(userText = "") {
+  const t = String(userText || "").toLowerCase();
+  // kullanıcı “ilet” dedi mi?
+  return /(onaylıyorum|onay veriyorum|ilet|iletebilirsin|gönder|tamam ilet|randevu oluştur|ekibe ilet|iletilsin)/i.test(t);
+}
+
+function assistantAskingApproval(assistantText = "") {
+  const t = String(assistantText || "").toLowerCase();
+  // asistan "onay verirseniz iletebilirim" diyorsa bu mail atılmamalı (taslak aşaması)
+  return /(onay verirseniz|onaylıyor musunuz|onay verir misiniz|iletmemi ister misiniz|iletmemi onaylar mısınız|iletebilirim|hazırlayabilirim)/i.test(t);
+}
+
+// aynı payload'ı kısa sürede tekrar maillemeyi engelle
+const recentHandoffs = new Map(); // key: threadId, value: { hash, ts }
+async function isDuplicateHandoff(threadId, payload) {
+  try {
+    const crypto = await import("crypto"); // ESM uyumlu
+    const hash = crypto.createHash("sha1").update(JSON.stringify(payload || {})).digest("hex");
+    const now = Date.now();
+
+    const prev = recentHandoffs.get(threadId);
+    if (prev && prev.hash === hash && (now - prev.ts) < 5 * 60 * 1000) {
+      return true;
+    }
+    recentHandoffs.set(threadId, { hash, ts: now });
+    return false;
+  } catch {
+    return false;
+  }
+}
 
 // Assistant yanıtından handoff JSON çıkar
 
@@ -1135,6 +1166,28 @@ console.log("[handoff] PREP(stream-end)", {
 
 
 if (handoff) {
+    // --- GATE: kullanıcı açık onay vermediyse mail atma ---
+  const userText = message; // stream endpoint'te req.body.message zaten burada
+  const assistantText = accTextOriginal;
+
+  // Asistan onay istiyorsa (taslak/eksik bilgi), mail atma
+  if (assistantAskingApproval(assistantText) && !userApprovedHandoff(userText)) {
+    console.log("[handoff][gate][stream] blocked (assistant asking approval, user not approved yet)");
+    handoff = null; // loglamada handoff kaydı düşmesin istersen
+  }
+
+  // Kullanıcı açıkça onay vermediyse mail atma
+  if (handoff && !userApprovedHandoff(userText)) {
+    console.log("[handoff][gate][stream] blocked (no explicit user approval)");
+    handoff = null;
+  }
+
+  // --- Duplicate guard (5 dk içinde aynı payload tekrar mailleme) ---
+  if (handoff && await isDuplicateHandoff(threadId, handoff.payload)) {
+    console.log("[handoff][gate][stream] blocked duplicate payload");
+    handoff = null;
+  }
+
   try {
     
     const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
@@ -1333,6 +1386,25 @@ cleanText = stripFenced(rawAssistantText);
 
 
     if (handoff) {
+        // --- GATE: poll endpoint'te de kullanıcı açık onay vermediyse mail atma ---
+  const userText = message; // poll endpoint'te de req.body.message var
+  const assistantText = rawAssistantText;
+
+  if (assistantAskingApproval(assistantText) && !userApprovedHandoff(userText)) {
+    console.log("[handoff][gate][poll] blocked (assistant asking approval, user not approved yet)");
+    handoff = null;
+  }
+
+  if (handoff && !userApprovedHandoff(userText)) {
+    console.log("[handoff][gate][poll] blocked (no explicit user approval)");
+    handoff = null;
+  }
+
+  if (handoff && await isDuplicateHandoff(threadId, handoff.payload)) {
+    console.log("[handoff][gate][poll] blocked duplicate payload");
+    handoff = null;
+  }
+
   try {
 
     const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
