@@ -1108,6 +1108,8 @@ if (handoff) {
     console.error("[handoff][stream] email failed or dropped:", {
       message: e?.message, code: e?.code
     });
+    console.error("[handoff][stream] payload snapshot:", JSON.stringify(handoff?.payload || {}, null, 2));
+
   }
 } else {
   console.log("[handoff][stream] no handoff block/signal found");
@@ -1311,6 +1313,8 @@ cleanText = stripFenced(rawAssistantText);
     console.error("[handoff][poll] email failed or dropped:", {
       message: e?.message, code: e?.code
     });
+    console.error("[handoff][stream] payload snapshot:", JSON.stringify(handoff?.payload || {}, null, 2));
+
   }
 
   
@@ -1407,6 +1411,7 @@ const server = app.listen(PORT, () => {
 server.headersTimeout = 120_000;   // header bekleme
 server.requestTimeout = 0;          // request toplam sÃ¼resini sÄ±nÄ±rsÄ±z yap (Node 18+)
 server.keepAliveTimeout = 75_000;   // TCP keep-alive
+
 
 
 
