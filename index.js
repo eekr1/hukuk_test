@@ -74,10 +74,23 @@ async function sendHandoffEmail({ brandKey, brandCfg, kind, payload }) {
       normalize(payload?.summary) ||
       "";
 
-    const category =
-      normalize(payload?.matter?.category) ||
-      normalize(payload?.category) ||
-      "";
+    const categoryRaw =
+  normalize(payload?.matter?.category) ||
+  normalize(payload?.category) ||
+  "";
+
+const categoryMap = {
+  aile: "Aile Hukuku",
+  is: "İş Hukuku",
+  ceza: "Ceza Hukuku",
+  icra: "İcra / Alacak",
+  kira: "Kira / Tahliye",
+  tazminat: "Tazminat",
+  diger: "Diğer"
+};
+
+const category = categoryMap[categoryRaw] || categoryRaw;
+
 
     const urgency =
       normalize(payload?.matter?.urgency) ||
@@ -725,6 +738,24 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
   if (!out.contact.phone) out.contact.phone = phoneRaw;
   if (!out.contact.email && out.email) out.contact.email = out.email;
 
+    // --- Mailde sohbet/handoff bloğu görünmesin diye: details temizliği ---
+  if (out?.request?.details) {
+    out.request.details = String(out.request.details)
+      .replace(/```[\s\S]*?```/g, "")      // fenced blokları tamamen sil
+      .replace(/\n{3,}/g, "\n\n")          // aşırı boşlukları toparla
+      .trim();
+
+    // çok uzunsa kırp (maili şişirmesin)
+    if (out.request.details.length > 900) {
+      out.request.details = out.request.details.slice(0, 900) + "…";
+    }
+  }
+
+  // summary saçmaysa düzelt
+  if (out?.request?.summary && /Bilgilerinizi aldım/i.test(out.request.summary)) {
+    out.request.summary = "Randevu talebi";
+  }
+
   return out;
 }
 
@@ -1108,6 +1139,11 @@ while (true) {
         for (const c of arr) {
           if (c?.type === "text" && c?.text?.value) {
             c.text.value = sanitizeDeltaText(c.text.value);
+            // Son çivi: "handoff": geçen bir şey kalırsa komple kırp
+if (/"handoff"\s*:|```handoff/i.test(c.text.value)) {
+  c.text.value = c.text.value.replace(/```[\s\S]*$/g, "").trim();
+}
+
             // defensive: "handoff" kelimesi geçen fenced parçalar bazen fence’siz sızabilir
          c.text.value = c.text.value.replace(/```handoff[\s\S]*?```/gi, "");
 
@@ -1146,12 +1182,13 @@ let handoff = extractHandoff(accTextOriginal);
 
 // Fallback: explicit block yoksa metinden çıkar
 if (!handoff) {
-  const inferred = inferHandoffFromText(accTextOriginal);
+  // fallback SADECE kullanıcı mesajından yapılmalı (asistan metninden değil)
+  const inferred = inferHandoffFromText(message);
   if (inferred) {
     handoff = inferred;
-    console.log("[handoff][fallback] inferred from text");
   }
 }
+
 
 
 
@@ -1374,7 +1411,7 @@ let cleanText = stripFenced(rawAssistantText);
 
 // explicit yoksa metinden üret
 if (!handoff) {
-  const inferred = inferHandoffFromText(rawAssistantText);
+  const inferred = inferHandoffFromText(message);
   if (inferred) {
     handoff = inferred;
     console.log("[handoff][fallback][poll] inferred from text");
