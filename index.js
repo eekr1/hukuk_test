@@ -462,18 +462,9 @@ async function openAI(path, { method = "GET", body } = {}) {
   return res.json();
 }
 
-// ============ HANDOFF GATE HELPERS (mail sadece açık onayla) ============
-function userApprovedHandoff(userText = "") {
-  const t = String(userText || "").toLowerCase();
-  // kullanıcı “ilet” dedi mi?
-  return /(onaylıyorum|onay veriyorum|ilet|iletebilirsin|gönder|tamam ilet|randevu oluştur|ekibe ilet|iletilsin)/i.test(t);
-}
 
-function assistantAskingApproval(assistantText = "") {
-  const t = String(assistantText || "").toLowerCase();
-  // asistan "onay verirseniz iletebilirim" diyorsa bu mail atılmamalı (taslak aşaması)
-  return /(onay verirseniz|onaylıyor musunuz|onay verir misiniz|iletmemi ister misiniz|iletmemi onaylar mısınız|iletebilirim|hazırlayabilirim)/i.test(t);
-}
+
+
 
 // aynı payload'ı kısa sürede tekrar maillemeyi engelle
 const recentHandoffs = new Map(); // threadId -> { hash, ts }
@@ -494,6 +485,25 @@ function isDuplicateHandoff(threadId, payload) {
   recentHandoffs.set(threadId, { hash, ts: now });
   return false;
 }
+
+function hasMinimumHandoffData(cleanPayload = {}) {
+  const name = String(cleanPayload?.contact?.name || "").trim();
+
+  // normalizeHandoffPayload zaten digits üretiyor olabilir; yoksa raw’dan da yakala
+  const phoneDigits =
+    String(cleanPayload?.contact?.phoneDigits || "").trim() ||
+    String(cleanPayload?.contact?.phone || "").replace(/\D/g, "").trim();
+
+  const summary = String(cleanPayload?.request?.summary || cleanPayload?.summary || "").trim();
+  const details = String(cleanPayload?.request?.details || cleanPayload?.details || "").trim();
+
+  const hasName = name.length >= 2;
+  const hasPhone = phoneDigits.length >= 10; // TR için pratik eşik
+  const hasText = (summary.length >= 3) || (details.length >= 3);
+
+  return hasName && hasPhone && hasText;
+}
+
 
 
 function userProvidedContactInfo(userText = "") {
@@ -698,28 +708,27 @@ function extractHandoff(text = "") {
   }
 }
 
-// ---- Resolve "to" & "from" with safe fallbacks ----
+// ---- Resolve "to" & "from" (NO personal fallback) ----
 function resolveEmailRouting(brandCfg) {
-  // Alıcı (to): Öncelik sırası
+  // Alıcı (to): SADECE brandCfg veya env’den gelsin
   const to =
     brandCfg?.handoffEmailTo ||          // Marka özel handoff alıcısı
-    process.env.HANDOFF_TO ||            // Ortak ortam değişkeni
-    brandCfg?.contactEmail ||            // Markanın genel iletişim adresi
-    "eniskuru59@gmail.com";              // Son çare: test adresin
+    brandCfg?.contactEmail  ||           // Markanın genel iletişim adresi
+    process.env.HANDOFF_TO;              // Ortak ortam değişkeni
 
-  // Gönderen (from): Brevo HTTP API için doğrulanmış gönderen adresi gerekir
+  // Gönderen (from): Brevo’da doğrulanmış sender tercih edilir
   const from =
     process.env.EMAIL_FROM ||            // ✅ Brevo’da doğrulanmış sender
-    brandCfg?.noreplyEmail ||            // Marka noreply (doğrulanmışsa)
-    "no-reply@localhost.local";          // Son çare (gönderim reddedilebilir)
+    brandCfg?.noreplyEmail;              // (doğrulanmışsa)
 
   const fromName =
-    process.env.EMAIL_FROM_NAME ||       // Örn: "Barbare Asistan"
-    brandCfg?.brandName ||               // Örn: "Barbare"
+    process.env.EMAIL_FROM_NAME ||       // Örn: "X Hukuk Asistan"
+    brandCfg?.brandName ||               // Örn: "X Hukuk"
     "Assistant";
 
   return { to, from, fromName };
 }
+
 
 function normalizeHandoffPayload(payload = {}) {
   const out = JSON.parse(JSON.stringify(payload || {}));
@@ -1358,41 +1367,25 @@ console.log("[handoff] PREP(stream-end)", {
 
 
 if (handoff) {
-  // --- GATE: mail gönderimi için mantık ---
-  const userText = message;            // req.body.message (son kullanıcı mesajı)
-  const assistantText = accTextOriginal;
-
-  const explicitOk = userApprovedHandoff(userText);
-
-  // ✅ implicit: ya kullanıcı mesajından kontakt yakala ya da handoff payload içinden
-  const hasContact =
-    userProvidedContactInfo(userText) ||
-    !!(handoff?.payload?.contact?.phone && String(handoff.payload.contact.phone).trim()) ||
-    !!(handoff?.payload?.contact?.name && String(handoff.payload.contact.name).trim());
-
-  const implicitOk = hasContact && assistantIndicatesSending(assistantText);
-
-  if (assistantAskingApproval(assistantText) && !explicitOk) {
-    console.log("[handoff][gate][stream] blocked (assistant asking approval)");
-    handoff = null;
-  } else if (!(explicitOk || implicitOk)) {
-    console.log("[handoff][gate][stream] blocked (no explicit approval and no implicit contact-based approval)");
-    handoff = null;
-  }
-
-  if (handoff && isDuplicateHandoff(threadId, handoff.payload)) {
+  // 1) duplicate engeli (kalsın)
+  if (isDuplicateHandoff(threadId, handoff.payload)) {
     console.log("[handoff][gate][stream] blocked duplicate payload");
     handoff = null;
   }
 
-  // ✅ KRİTİK: gate sonrası handoff null ise try’a girme
   if (!handoff) {
     console.log("[handoff][stream] not sending (gated)");
   } else {
     try {
       const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
-      await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
-      console.log("[handoff][stream] SENT");
+
+      // 2) Minimum bilgi yoksa mail YOK
+      if (!hasMinimumHandoffData(clean)) {
+        console.log("[handoff][gate][stream] blocked (missing minimum data)");
+      } else {
+        await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
+        console.log("[handoff][stream] SENT");
+      }
     } catch (e) {
       console.error("[handoff][stream] email failed or dropped:", {
         message: e?.message,
@@ -1405,6 +1398,7 @@ if (handoff) {
     }
   }
 }
+
 
 // 🔵 BURAYA: assistant cevabını logla
 try {
@@ -1587,58 +1581,44 @@ if (!handoff) {
 cleanText = stripFenced(rawAssistantText);
 
 
-    if (handoff) {
-      const userText = message;           // req.body.message
-const assistantText = rawAssistantText;
-
-const explicitOk = userApprovedHandoff(userText);
-const implicitOk = userProvidedContactInfo(userText) && assistantIndicatesSending(assistantText);
-
-if (assistantAskingApproval(assistantText) && !explicitOk) {
-  console.log("[handoff][gate][poll] blocked (assistant asking approval)");
-  handoff = null;
-} else if (handoff && !(explicitOk || implicitOk)) {
-  console.log("[handoff][gate][poll] blocked (no explicit approval and no implicit contact-based approval)");
-  handoff = null;
-}
-  if (handoff && isDuplicateHandoff(threadId, handoff.payload)) {
+ if (handoff) {
+  // duplicate engeli
+  if (isDuplicateHandoff(threadId, handoff.payload)) {
     console.log("[handoff][gate][poll] blocked duplicate payload");
     handoff = null;
   }
 
-
   if (!handoff) {
-  console.log("[handoff][poll] not sending (gated)");
-} else {
-  try {
-    const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
+    console.log("[handoff][poll] not sending (gated)");
+  } else {
+    try {
+      const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
 
-    await sendHandoffEmail({
-      brandKey,
-      kind: handoff.kind,
-      payload: clean,
-      brandCfg,
-    });
+      if (!hasMinimumHandoffData(clean)) {
+        console.log("[handoff][gate][poll] blocked (missing minimum data)");
+      } else {
+        await sendHandoffEmail({
+          brandKey,
+          kind: handoff.kind,
+          payload: clean,
+          brandCfg,
+        });
 
-    console.log("[handoff][poll] SENT", { kind: handoff.kind });
-  } catch (e) {
-    console.error("[handoff][poll] email failed or dropped:", {
-      message: e?.message,
-      code: e?.code,
-    });
-    console.error(
-      "[handoff][poll] payload snapshot:",
-      JSON.stringify(handoff?.payload || {}, null, 2)
-    );
+        console.log("[handoff][poll] SENT", { kind: handoff.kind });
+      }
+    } catch (e) {
+      console.error("[handoff][poll] email failed or dropped:", {
+        message: e?.message,
+        code: e?.code,
+      });
+      console.error(
+        "[handoff][poll] payload snapshot:",
+        JSON.stringify(handoff?.payload || {}, null, 2)
+      );
+    }
   }
 }
 
-
-  
-  // Kullanıcıya dönen metinden gizli blokları temizle (defensive)
-cleanText = stripFenced(rawAssistantText);
-
-}
 
 
 // 🔵 BURAYA: assistant cevabını logla
