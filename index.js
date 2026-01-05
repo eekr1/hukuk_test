@@ -999,70 +999,57 @@ async function ensureTables() {
   }
 
     const sql = `
-    CREATE TABLE IF NOT EXISTS conversations (
-      id SERIAL PRIMARY KEY,
-      thread_id TEXT UNIQUE NOT NULL,
-      brand_key TEXT,
+  CREATE TABLE IF NOT EXISTS conversations (
+    id SERIAL PRIMARY KEY,
+    thread_id TEXT UNIQUE NOT NULL,
+    brand_key TEXT,
+    visitor_id TEXT,
+    session_id TEXT,
+    source JSONB,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    last_message_at TIMESTAMPTZ DEFAULT now()
+  );
 
-      -- ✅ NEW: visitor/session attribution
-      visitor_id TEXT,
-      session_id TEXT,
-      entry_page TEXT,
-      referrer TEXT,
-      utm JSONB,
+  CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+    role TEXT NOT NULL,
+    text TEXT,
+    raw_text TEXT,
+    handoff_kind TEXT,
+    handoff_payload JSONB,
+    meta JSONB,
+    created_at TIMESTAMPTZ DEFAULT now()
+  );
 
-      created_at TIMESTAMPTZ DEFAULT now(),
-      last_message_at TIMESTAMPTZ DEFAULT now()
-    );
+  CREATE INDEX IF NOT EXISTS idx_conversations_brand_key
+    ON conversations(brand_key);
 
-    CREATE TABLE IF NOT EXISTS messages (
-      id SERIAL PRIMARY KEY,
-      conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-      role TEXT NOT NULL,                    -- 'user' | 'assistant'
-      text TEXT,                             -- temiz metin (kullanıcıya giden/gelen)
-      raw_text TEXT,                         -- istersen fence'li ham metin
-      handoff_kind TEXT,                     -- 'reservation' | 'customer_request' | null
-      handoff_payload JSONB,                 -- handoff payload'ının tamamı
-      created_at TIMESTAMPTZ DEFAULT now()
-    );
+  CREATE INDEX IF NOT EXISTS idx_conversations_visitor_id
+    ON conversations(visitor_id);
 
-    -- ✅ NEW: thread_id üzerinden hızlı join için
-    CREATE INDEX IF NOT EXISTS idx_conversations_thread_id
-      ON conversations(thread_id);
+  CREATE INDEX IF NOT EXISTS idx_messages_conversation_id
+    ON messages(conversation_id);
+    
+  CREATE INDEX IF NOT EXISTS idx_conversations_session_id
+  ON conversations(session_id);
 
-    CREATE INDEX IF NOT EXISTS idx_conversations_brand_key
-      ON conversations(brand_key);
+`;
 
-    -- ✅ NEW: visitor bazlı raporlar için
-    CREATE INDEX IF NOT EXISTS idx_conversations_visitor_id
-      ON conversations(visitor_id);
-
-    -- ✅ NEW: session bazlı raporlar için
-    CREATE INDEX IF NOT EXISTS idx_conversations_session_id
-      ON conversations(session_id);
-
-    CREATE INDEX IF NOT EXISTS idx_messages_conversation_id
-      ON messages(conversation_id);
-
-    -- ✅ NEW: UYGULAMA CANLIYSA ve tablo önceden oluştuysa kolonları ekle
-    ALTER TABLE conversations
-      ADD COLUMN IF NOT EXISTS visitor_id TEXT;
-
-    ALTER TABLE conversations
-      ADD COLUMN IF NOT EXISTS session_id TEXT;
-
-    ALTER TABLE conversations
-      ADD COLUMN IF NOT EXISTS entry_page TEXT;
-
-    ALTER TABLE conversations
-      ADD COLUMN IF NOT EXISTS referrer TEXT;
-
-    ALTER TABLE conversations
-      ADD COLUMN IF NOT EXISTS utm JSONB;
-  `;
 
   try {
     await pool.query(sql);
+    // Tablo daha önce oluştuysa eksik kolonları ekle (idempotent)
+await pool.query(`
+  ALTER TABLE conversations
+    ADD COLUMN IF NOT EXISTS visitor_id TEXT,
+    ADD COLUMN IF NOT EXISTS session_id TEXT,
+    ADD COLUMN IF NOT EXISTS source JSONB;
+
+  ALTER TABLE messages
+    ADD COLUMN IF NOT EXISTS meta JSONB;
+`);
+
     console.log("[db] tablo kontrolü / oluşturma tamam ✅");
   } catch (e) {
     console.error("[db] tablo oluştururken hata:", e);
@@ -1076,13 +1063,10 @@ async function logChatMessage({
   text,
   rawText,
   handoff,
-
-  // ✅ NEW: attribution fields (optional)
   visitorId,
   sessionId,
-  entryPage,
-  referrer,
-  utm, // object
+  source,
+  meta
 }) {
   if (!process.env.DATABASE_URL) return;
 
@@ -1093,55 +1077,44 @@ async function logChatMessage({
 
       // 1) Konuşmayı upsert et (thread_id unique)
       // ✅ NEW: visitor/session bilgileri varsa conversations'a yaz / güncelle
-      const convRes = await client.query(
-        `
-        INSERT INTO conversations
-          (thread_id, brand_key, visitor_id, session_id, entry_page, referrer, utm, created_at, last_message_at)
-        VALUES
-          ($1, $2, $3, $4, $5, $6, $7, now(), now())
-        ON CONFLICT (thread_id)
-        DO UPDATE SET
-          last_message_at = now(),
-          brand_key   = COALESCE(EXCLUDED.brand_key, conversations.brand_key),
+     const convRes = await client.query(
+  `
+  INSERT INTO conversations (thread_id, brand_key, visitor_id, session_id, source, created_at, last_message_at)
+  VALUES ($1, $2, $3, $4, $5, now(), now())
+  ON CONFLICT (thread_id)
+  DO UPDATE SET
+    brand_key = EXCLUDED.brand_key,
+    last_message_at = now(),
+    visitor_id = COALESCE(conversations.visitor_id, EXCLUDED.visitor_id),
+    session_id = COALESCE(conversations.session_id, EXCLUDED.session_id),
+    source = COALESCE(conversations.source, EXCLUDED.source)
+  RETURNING id
+  `,
+  [threadId, brandKey || null, visitorId || null, sessionId || null, source ? JSON.stringify(source) : null]
+);
 
-          -- sadece dolu gelirse overwrite et; yoksa mevcut kalsın
-          visitor_id  = COALESCE(EXCLUDED.visitor_id, conversations.visitor_id),
-          session_id  = COALESCE(EXCLUDED.session_id, conversations.session_id),
-          entry_page  = COALESCE(EXCLUDED.entry_page, conversations.entry_page),
-          referrer    = COALESCE(EXCLUDED.referrer, conversations.referrer),
-          utm         = COALESCE(EXCLUDED.utm, conversations.utm)
-        RETURNING id
-        `,
-        [
-          threadId,
-          brandKey || null,
-          visitorId || null,
-          sessionId || null,
-          entryPage || null,
-          referrer || null,
-          utm ? JSON.stringify(utm) : null,
-        ]
-      );
 
       const conversationId = convRes.rows[0].id;
 
       // 2) Mesajı ekle
       await client.query(
-        `
-        INSERT INTO messages
-          (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, created_at)
-        VALUES
-          ($1, $2, $3, $4, $5, $6, now())
-        `,
-        [
-          conversationId,
-          role,
-          text || null,
-          rawText || null,
-          handoff ? handoff.kind || null : null,
-          handoff ? JSON.stringify(handoff.payload || null) : null,
-        ]
-      );
+  `
+  INSERT INTO messages
+    (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, meta, created_at)
+  VALUES
+    ($1, $2, $3, $4, $5, $6, $7, now())
+  `,
+  [
+    conversationId,
+    role,
+    text || null,
+    rawText || null,
+    handoff ? handoff.kind || null : null,
+    handoff ? JSON.stringify(handoff.payload || null) : null,
+    meta ? JSON.stringify(meta) : null,
+  ]
+);
+
 
       await client.query("COMMIT");
     } catch (e) {
@@ -1176,7 +1149,8 @@ const chatLimiter = rateLimit({
 /* OpenAI Assistants v2 SSE proxy: /threads/{threadId}/runs  +  { stream:true } */
 app.post("/api/chat/stream", chatLimiter, async (req, res) => {
   try {
-    const { threadId, message, brandKey } = req.body || {};
+    const { threadId, message, brandKey, visitorId, sessionId, source, meta } = req.body || {};
+
     console.log("[brand] incoming:", { brandKey });
 
     if (!threadId || !message) {
@@ -1197,7 +1171,12 @@ await logChatMessage({
   text: message,
   rawText: message,
   handoff: null,
+  visitorId,
+  sessionId,
+  source,
+  meta
 });
+
 
     
    // SSE başlıkları
@@ -1473,14 +1452,19 @@ if (handoff) {
 // 🔵 BURAYA: assistant cevabını logla
 try {
   const cleanText = accTextOriginal.replace(/```[\s\S]*?```/g, "").trim();
-  await logChatMessage({
-    brandKey,
-    threadId,
-    role: "assistant",
-    text: cleanText,
-    rawText: accTextOriginal,
-    handoff,
-  });
+ await logChatMessage({
+  brandKey,
+  threadId,
+  role: "assistant",
+  text: cleanText,
+  rawText: accTextOriginal,
+  handoff,
+  visitorId,
+  sessionId,
+  source,
+  meta
+});
+
 } catch (e) {
   console.error("[db] logChatMessage (stream assistant) error:", e);
 }
@@ -1540,7 +1524,8 @@ app.post("/api/chat/init", chatLimiter, async (req, res) => {
 // 2) Mesaj gönder + run başlat + poll + yanıtı getir (brandKey destekli)
 
 app.post("/api/chat/message", chatLimiter, async (req, res) => {
-  const { threadId, message, brandKey } = req.body || {};
+  const { threadId, message, brandKey, visitorId, sessionId, source, meta } = req.body || {};
+
   console.log("[brand] incoming:", { brandKey });
 
   if (!threadId || !message) {
@@ -1556,13 +1541,18 @@ if (!brandCfg) {
 try {
   //  BURAYA: user mesajını logla
   await logChatMessage({
-    brandKey,
-    threadId,
-    role: "user",
-    text: message,
-    rawText: message,
-    handoff: null,
-  });
+  brandKey,
+  threadId,
+  role: "user",
+  text: message,
+  rawText: message,
+  handoff: null,
+  visitorId,
+  sessionId,
+  source,
+  meta
+});
+
 
   // 2.a) Mesajı threade ekle
   await openAI(`/threads/${threadId}/messages`, {
@@ -1693,13 +1683,19 @@ cleanText = stripFenced(rawAssistantText);
 
 // 🔵 BURAYA: assistant cevabını logla
 try {
-  await logChatMessage({
-    brandKey,
-    threadId,
-    role: "assistant",
-    text: cleanText,
-  rawText: rawAssistantText,      // burada zaten fence'ler temizlenmiş metin var
-    handoff,
+await logChatMessage({
+  brandKey,
+  threadId,
+  role: "assistant",
+  text: cleanText,
+  rawText: accTextOriginal,
+  handoff,
+  visitorId,
+  sessionId,
+  source,
+  meta,
+rawText: rawAssistantText,      // burada zaten fence'ler temizlenmiş metin var
+  
   });
 } catch (e) {
   console.error("[db] logChatMessage (poll assistant) error:", e);
