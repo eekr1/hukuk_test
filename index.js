@@ -998,61 +998,61 @@ async function ensureTables() {
     return;
   }
 
-    const sql = `
-  CREATE TABLE IF NOT EXISTS conversations (
-    id SERIAL PRIMARY KEY,
-    thread_id TEXT UNIQUE NOT NULL,
-    brand_key TEXT,
-    visitor_id TEXT,
-    session_id TEXT,
-    source JSONB,
-    created_at TIMESTAMPTZ DEFAULT now(),
-    last_message_at TIMESTAMPTZ DEFAULT now()
-  );
-
-  CREATE TABLE IF NOT EXISTS messages (
-    id SERIAL PRIMARY KEY,
-    conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-    role TEXT NOT NULL,
-    text TEXT,
-    raw_text TEXT,
-    handoff_kind TEXT,
-    handoff_payload JSONB,
-    meta JSONB,
-    created_at TIMESTAMPTZ DEFAULT now()
-  );
-
-  CREATE INDEX IF NOT EXISTS idx_conversations_brand_key
-    ON conversations(brand_key);
-
-  CREATE INDEX IF NOT EXISTS idx_conversations_visitor_id
-    ON conversations(visitor_id);
-
-  CREATE INDEX IF NOT EXISTS idx_messages_conversation_id
-    ON messages(conversation_id);
-    
-  CREATE INDEX IF NOT EXISTS idx_conversations_session_id
-  ON conversations(session_id);
-
-`;
-
-
   try {
-    await pool.query(sql);
-    // - Tablo daha önce oluştuysa eksik kolonları ekle (idempotent)
-await pool.query(`
-  ALTER TABLE conversations
-    ADD COLUMN IF NOT EXISTS visitor_id TEXT,
-    ADD COLUMN IF NOT EXISTS session_id TEXT,
-    ADD COLUMN IF NOT EXISTS source JSONB;
+    // 1) Tabloları oluştur (kolonlar burada olsa da olur; ama minimal tutup garantiye alıyoruz)
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS conversations (
+        id SERIAL PRIMARY KEY,
+        thread_id TEXT UNIQUE NOT NULL,
+        brand_key TEXT,
+        created_at TIMESTAMPTZ DEFAULT now(),
+        last_message_at TIMESTAMPTZ DEFAULT now()
+      );
 
-  ALTER TABLE messages
-    ADD COLUMN IF NOT EXISTS meta JSONB;
-`);
+      CREATE TABLE IF NOT EXISTS messages (
+        id SERIAL PRIMARY KEY,
+        conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        text TEXT,
+        raw_text TEXT,
+        handoff_kind TEXT,
+        handoff_payload JSONB,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
 
-    console.log("[db] tablo kontrolü / oluşturma tamam ✅");
+    // 2) Kolonları garanti et (idempotent migration)
+    await pool.query(`
+      ALTER TABLE conversations
+        ADD COLUMN IF NOT EXISTS visitor_id TEXT,
+        ADD COLUMN IF NOT EXISTS session_id TEXT,
+        ADD COLUMN IF NOT EXISTS source JSONB;
+
+      ALTER TABLE messages
+        ADD COLUMN IF NOT EXISTS meta JSONB;
+    `);
+
+    // 3) Index’leri garanti et (kolonlar artık kesin var)
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_conversations_thread_id
+        ON conversations(thread_id);
+
+      CREATE INDEX IF NOT EXISTS idx_conversations_brand_key
+        ON conversations(brand_key);
+
+      CREATE INDEX IF NOT EXISTS idx_conversations_visitor_id
+        ON conversations(visitor_id);
+
+      CREATE INDEX IF NOT EXISTS idx_conversations_session_id
+        ON conversations(session_id);
+
+      CREATE INDEX IF NOT EXISTS idx_messages_conversation_id
+        ON messages(conversation_id);
+    `);
+
+    console.log("[db] tablo kontrolü / migration / index tamam ✅");
   } catch (e) {
-    console.error("[db] tablo oluştururken hata:", e);
+    console.error("[db] ensureTables hata:", e);
   }
 }
 
