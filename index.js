@@ -998,11 +998,19 @@ async function ensureTables() {
     return;
   }
 
-  const sql = `
+    const sql = `
     CREATE TABLE IF NOT EXISTS conversations (
       id SERIAL PRIMARY KEY,
       thread_id TEXT UNIQUE NOT NULL,
       brand_key TEXT,
+
+      -- ✅ NEW: visitor/session attribution
+      visitor_id TEXT,
+      session_id TEXT,
+      entry_page TEXT,
+      referrer TEXT,
+      utm JSONB,
+
       created_at TIMESTAMPTZ DEFAULT now(),
       last_message_at TIMESTAMPTZ DEFAULT now()
     );
@@ -1018,11 +1026,39 @@ async function ensureTables() {
       created_at TIMESTAMPTZ DEFAULT now()
     );
 
+    -- ✅ NEW: thread_id üzerinden hızlı join için
+    CREATE INDEX IF NOT EXISTS idx_conversations_thread_id
+      ON conversations(thread_id);
+
     CREATE INDEX IF NOT EXISTS idx_conversations_brand_key
       ON conversations(brand_key);
 
+    -- ✅ NEW: visitor bazlı raporlar için
+    CREATE INDEX IF NOT EXISTS idx_conversations_visitor_id
+      ON conversations(visitor_id);
+
+    -- ✅ NEW: session bazlı raporlar için
+    CREATE INDEX IF NOT EXISTS idx_conversations_session_id
+      ON conversations(session_id);
+
     CREATE INDEX IF NOT EXISTS idx_messages_conversation_id
       ON messages(conversation_id);
+
+    -- ✅ NEW: UYGULAMA CANLIYSA ve tablo önceden oluştuysa kolonları ekle
+    ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS visitor_id TEXT;
+
+    ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS session_id TEXT;
+
+    ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS entry_page TEXT;
+
+    ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS referrer TEXT;
+
+    ALTER TABLE conversations
+      ADD COLUMN IF NOT EXISTS utm JSONB;
   `;
 
   try {
@@ -1033,8 +1069,21 @@ async function ensureTables() {
   }
 }
 
-async function logChatMessage({ brandKey, threadId, role, text, rawText, handoff }) {
-  // DB yoksa sessizce çık (lokalde / ilk etapta sorun yaratmasın)
+async function logChatMessage({
+  brandKey,
+  threadId,
+  role,
+  text,
+  rawText,
+  handoff,
+
+  // ✅ NEW: attribution fields (optional)
+  visitorId,
+  sessionId,
+  entryPage,
+  referrer,
+  utm, // object
+}) {
   if (!process.env.DATABASE_URL) return;
 
   try {
@@ -1042,17 +1091,38 @@ async function logChatMessage({ brandKey, threadId, role, text, rawText, handoff
     try {
       await client.query("BEGIN");
 
-      // 1) Konuşmayı upsert et (thread_id + brand_key)
+      // 1) Konuşmayı upsert et (thread_id unique)
+      // ✅ NEW: visitor/session bilgileri varsa conversations'a yaz / güncelle
       const convRes = await client.query(
         `
-        INSERT INTO conversations (thread_id, brand_key, created_at, last_message_at)
-        VALUES ($1, $2, now(), now())
+        INSERT INTO conversations
+          (thread_id, brand_key, visitor_id, session_id, entry_page, referrer, utm, created_at, last_message_at)
+        VALUES
+          ($1, $2, $3, $4, $5, $6, $7, now(), now())
         ON CONFLICT (thread_id)
-        DO UPDATE SET last_message_at = now()
+        DO UPDATE SET
+          last_message_at = now(),
+          brand_key   = COALESCE(EXCLUDED.brand_key, conversations.brand_key),
+
+          -- sadece dolu gelirse overwrite et; yoksa mevcut kalsın
+          visitor_id  = COALESCE(EXCLUDED.visitor_id, conversations.visitor_id),
+          session_id  = COALESCE(EXCLUDED.session_id, conversations.session_id),
+          entry_page  = COALESCE(EXCLUDED.entry_page, conversations.entry_page),
+          referrer    = COALESCE(EXCLUDED.referrer, conversations.referrer),
+          utm         = COALESCE(EXCLUDED.utm, conversations.utm)
         RETURNING id
         `,
-        [threadId, brandKey || null]
+        [
+          threadId,
+          brandKey || null,
+          visitorId || null,
+          sessionId || null,
+          entryPage || null,
+          referrer || null,
+          utm ? JSON.stringify(utm) : null,
+        ]
       );
+
       const conversationId = convRes.rows[0].id;
 
       // 2) Mesajı ekle
