@@ -1039,7 +1039,7 @@ async function ensureTables() {
 
   try {
     await pool.query(sql);
-    // Tablo daha önce oluştuysa eksik kolonları ekle (idempotent)
+    // - Tablo daha önce oluştuysa eksik kolonları ekle (idempotent)
 await pool.query(`
   ALTER TABLE conversations
     ADD COLUMN IF NOT EXISTS visitor_id TEXT,
