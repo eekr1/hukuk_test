@@ -241,11 +241,57 @@
   const BRAND_KEY = params.get("brand") || "hukuk-test";
 
   // embed=1 ise body'ye embed class'ı ekle
-  if (params.get("embed") === "1") {
-    document.addEventListener("DOMContentLoaded", () => {
-      document.body.classList.add("embed");
-    });
+ if (params.get("embed") === "1") document.body.classList.add("embed");
+
+function getOrCreateLS(key, genFn){
+  try{
+    const v = localStorage.getItem(key);
+    if (v) return v;
+    const nv = genFn();
+    localStorage.setItem(key, nv);
+    return nv;
+  }catch(_){
+    // localStorage kapalıysa fallback
+    return genFn();
   }
+}
+
+function uuidLike(){
+  // kripto güçlü olmasa da visitor/session için yeterli (istersen crypto.randomUUID kullanırız)
+  return "v_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+
+function getVisitorId(){
+  return getOrCreateLS("bot_visitor_id", uuidLike);
+}
+
+function getSessionId(){
+  // session: her sayfa açılışında yenilensin
+  return "s_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
+}
+
+function getSource(){
+  const p = new URLSearchParams(location.search);
+  const utm = {};
+  ["utm_source","utm_medium","utm_campaign","utm_term","utm_content"].forEach(k=>{
+    const v = p.get(k);
+    if (v) utm[k] = v;
+  });
+  return {
+    ...utm,
+    referrer: document.referrer || null,
+    landing: location.href
+  };
+}
+
+function getMeta(){
+  return {
+    ua: navigator.userAgent,
+    lang: navigator.language,
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    viewport: { w: window.innerWidth, h: window.innerHeight }
+  };
+}
 
 
   (function(){
@@ -257,6 +303,10 @@
     // State
     let threadId = null;
     let sending  = false;
+    const VISITOR_ID = getVisitorId();
+    const SESSION_ID = getSessionId();
+    const SOURCE = getSource();
+
 
     // DOM
     const $msgs  = document.getElementById("msgs");
@@ -324,7 +374,14 @@
       const r = await fetch(API_BASE + "/api/chat/init", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ brandKey: BRAND_KEY })
+  body: JSON.stringify({
+  brandKey: BRAND_KEY,
+  visitorId: VISITOR_ID,
+  sessionId: SESSION_ID,
+  source: SOURCE,
+  meta: getMeta()
+})
+
 });
 
       if (!r.ok) throw new Error("init_failed");
@@ -339,8 +396,15 @@
       const resp = await fetch(API_BASE + "/api/chat/stream", {
         method:"POST",
         headers:{ "Content-Type":"application/json", "Accept":"text/event-stream" },
-        body: JSON.stringify({ threadId, message, brandKey: BRAND_KEY })
-
+        body: JSON.stringify({
+  threadId,
+  message,
+  brandKey: BRAND_KEY,
+  visitorId: VISITOR_ID,
+  sessionId: SESSION_ID,
+  source: SOURCE,
+  meta: getMeta()
+})
       });
       if (!resp.ok || !resp.body) throw new Error("stream_response_error");
 
@@ -414,7 +478,16 @@
           const r = await fetch(API_BASE + "/api/chat/message", {
             method:"POST",
             headers:{ "Content-Type":"application/json" },
-            body: JSON.stringify({ threadId, message: msg, brandKey: BRAND_KEY })
+          body: JSON.stringify({
+  threadId,
+  message: msg,
+  brandKey: BRAND_KEY,
+  visitorId: VISITOR_ID,
+  sessionId: SESSION_ID,
+  source: SOURCE,
+  meta: getMeta()
+})
+
           });
           const j = await r.json();
           node.bubble.textContent = j.message || "(Yanıt alınamadı)";
