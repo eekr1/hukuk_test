@@ -252,6 +252,44 @@ async function readIncomingMessageJSON(resp) {
     return null;
   }
 }
+/* ==================== Google Sheets Webhook (Apps Script) ==================== */
+async function pushHandoffToSheets(row) {
+  const url = (process.env.SHEETS_WEBHOOK_URL || "").trim();
+  if (!url) return { ok: false, skipped: true, reason: "SHEETS_WEBHOOK_URL missing" };
+
+  const secret = (process.env.SHEETS_WEBHOOK_SECRET || "").trim();
+
+  // Timeout (Render’da takılmasın)
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        ...(secret ? { "x-webhook-secret": secret } : {}),
+      },
+      body: JSON.stringify(row),
+      signal: ctrl.signal,
+    });
+
+    const text = await resp.text().catch(() => "");
+    if (!resp.ok) {
+      console.warn("[sheets] webhook non-2xx:", resp.status, text.slice(0, 300));
+      return { ok: false, status: resp.status, body: text };
+    }
+
+    console.log("[sheets] pushed ✅");
+    return { ok: true, status: resp.status, body: text };
+  } catch (e) {
+    console.warn("[sheets] push failed:", e?.message || e);
+    return { ok: false, error: String(e?.message || e) };
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 
 
 /* ==================== App Middleware ==================== */
@@ -1433,6 +1471,21 @@ if (handoff) {
         console.log("[handoff][gate][stream] blocked (missing minimum data)");
       } else {
         await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
+
+await pushHandoffToSheets({
+  ts: new Date().toISOString(),
+  brandKey,
+  kind: handoff.kind,
+  threadId,
+  visitorId: visitorId || null,
+  sessionId: sessionId || null,
+  source: source || null,
+  meta: meta || null,
+  payload: clean
+});
+
+console.log("[handoff][stream] SENT");
+
         console.log("[handoff][stream] SENT");
       }
     } catch (e) {
@@ -1657,14 +1710,28 @@ cleanText = stripFenced(rawAssistantText);
       if (!hasMinimumHandoffData(clean)) {
         console.log("[handoff][gate][poll] blocked (missing minimum data)");
       } else {
-        await sendHandoffEmail({
-          brandKey,
-          kind: handoff.kind,
-          payload: clean,
-          brandCfg,
-        });
+     await sendHandoffEmail({
+  brandKey,
+  kind: handoff.kind,
+  payload: clean,
+  brandCfg,
+});
 
-        console.log("[handoff][poll] SENT", { kind: handoff.kind });
+await pushHandoffToSheets({
+  ts: new Date().toISOString(),
+  brandKey,
+  kind: handoff.kind,
+  threadId,
+  visitorId: visitorId || null,
+  sessionId: sessionId || null,
+  source: source || null,
+  meta: meta || null,
+  payload: clean
+});
+
+console.log("[handoff][poll] SENT", { kind: handoff.kind });
+
+
       }
     } catch (e) {
       console.error("[handoff][poll] email failed or dropped:", {
