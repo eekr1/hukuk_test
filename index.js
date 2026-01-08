@@ -377,7 +377,18 @@ function buildRunInstructions(brandKey, brandCfg = {}) {
     ? brandCfg.practiceAreas.join(", ")
     : "Aile, Ceza, İş, İcra/İflas, Gayrimenkul/Kira, Tazminat";
 
+  const now = new Date();
+  const nowStr = now.toLocaleDateString("tr-TR", {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
   return [
+    `CURRENT DATE/TIME: ${nowStr} (Europe/Istanbul)`,
     `ROLE / KİMLİK`,
     `- You are the official digital pre-intake and information assistant for "${label}" (a law office in ${city}).`,
     `- Your job is to: (1) understand the user’s legal topic, (2) provide general information only, (3) collect minimum pre-intake details, (4) prepare a handoff request for the legal team when needed.`,
@@ -480,7 +491,7 @@ Do NOT ask for additional confirmation or approval.
     `    "handoff": "customer_request",`,
     `    "payload": {`,
     `      "contact": { "name": "<Ad Soyad>", "phone": "<+905xx...>", "email": "<varsa@eposta>" },`,
-    `      "preferred_meeting": { "mode": "<online|yüz yüze>", "date": "<gün ay yıl>", "time": "<saat>" },`,
+    `      "preferred_meeting": { "mode": "<online|yüz yüze>", "date": "<YYYY-MM-DD>", "time": "<HH:MM>" },`,
     `      "matter": { "category": "<aile|ceza|is|icra|kira|tazminat|diger>", "urgency": "<acil|normal>" },`,
     `      "request": {`,
     `        "summary": "<tek satır konu özeti>",`,
@@ -489,6 +500,10 @@ Do NOT ask for additional confirmation or approval.
     `    }`,
     `  }`,
     `  \\\`\\\`\\\``,
+    ``,
+    `HANDOFF FORMAT RULES`,
+    `- "date" field MUST be in YYYY-MM-DD format (e.g. 2025-01-15).`,
+    `- If user says relative dates like "tomorrow", "next Monday", calculate it based on CURRENT DATE/TIME above.`,
     ``,
 
     `FORBIDDEN`,
@@ -586,7 +601,7 @@ function hasMinimumHandoffData(cleanPayload = {}) {
     (!!dateRaw && !!timeRaw) || // ayrı alanlar doluysa
     (!!dateRaw && !timeRaw && dateRaw.includes(" ")); // "2025-01-10 14:30" gibi tek string’se
 
-  
+
   // Debug log – artık NERESİ eksik görebileceksin
   if (!hasName || !hasPhone || !hasText || !hasMode || !hasDateTime) {
     console.log("[handoff][gate][debug]", {
