@@ -980,6 +980,25 @@ function normalizeHandoffPayload(payload = {}) {
   if (normalizedDate) out.preferred_meeting.date = normalizedDate;
   if (normalizedTime) out.preferred_meeting.time = normalizedTime;
 
+  // --- Fallback: Date/Time/Mode from Keywords ---
+  // Eğer tarih/saat boşsa ama metinde aciliyet belirten kelimeler varsa doldur.
+  const combinedText = ((summary || "") + " " + (details || "")).toLowerCase();
+
+  if (!out.preferred_meeting.date) {
+    const urgencyKeywords = ["hemen", "acil", "kısa", "en kısa zamanda", "en kısa sürede", "müsaitlikte", "uygun zamanda", "dönüş yaparsanız", "haber bekliyorum"];
+    if (urgencyKeywords.some(kw => combinedText.includes(kw))) {
+      out.preferred_meeting.date = "En kısa sürede (Tespit edilen)";
+      if (!out.preferred_meeting.time) {
+        out.preferred_meeting.time = "Müsaitlik durumuna göre";
+      }
+    }
+  }
+
+  // Mod boşsa varsayılan ata (Bloklamaması için)
+  if (!out.preferred_meeting.mode) {
+    out.preferred_meeting.mode = "İletişimde belirlenecek";
+  }
+
 
 
   // --- Mailde sohbet/handoff bloğu görünmesin diye: details temizliği ---
