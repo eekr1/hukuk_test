@@ -24,8 +24,8 @@ console.log("[boot] node version:", process.version);
 
 /* ==================== Mail Client (Brevo HTTP API) ==================== */
 const brevo = new TransactionalEmailsApi();
- const apiKey = process.env.BREVO_API_KEY || "";
- if (!apiKey) {
+const apiKey = process.env.BREVO_API_KEY || "";
+if (!apiKey) {
   console.warn("[mail] Missing BREVO_API_KEY — set it in environment!");
 }
 // SDK’nin resmi dokümantasyonundaki doğru yöntem:
@@ -35,7 +35,7 @@ console.log("[mail] Brevo HTTP API client ready");
 
 
 function escapeHtml(s = "") {
-  return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 }
 
 async function sendHandoffEmail({ brandKey, brandCfg, kind, payload }) {
@@ -77,21 +77,21 @@ async function sendHandoffEmail({ brandKey, brandCfg, kind, payload }) {
       "";
 
     const categoryRaw =
-  normalize(payload?.matter?.category) ||
-  normalize(payload?.category) ||
-  "";
+      normalize(payload?.matter?.category) ||
+      normalize(payload?.category) ||
+      "";
 
-const categoryMap = {
-  aile: "Aile Hukuku",
-  is: "İş Hukuku",
-  ceza: "Ceza Hukuku",
-  icra: "İcra / Alacak",
-  kira: "Kira / Tahliye",
-  tazminat: "Tazminat",
-  diger: "Diğer"
-};
+    const categoryMap = {
+      aile: "Aile Hukuku",
+      is: "İş Hukuku",
+      ceza: "Ceza Hukuku",
+      icra: "İcra / Alacak",
+      kira: "Kira / Tahliye",
+      tazminat: "Tazminat",
+      diger: "Diğer"
+    };
 
-const category = categoryMap[categoryRaw] || categoryRaw;
+    const category = categoryMap[categoryRaw] || categoryRaw;
 
 
     const urgency =
@@ -114,16 +114,16 @@ const category = categoryMap[categoryRaw] || categoryRaw;
     const kv = [];
 
     // Contact
-    const name  = normalize(payload?.contact?.name || payload?.full_name);
+    const name = normalize(payload?.contact?.name || payload?.full_name);
     const phone = normalize(payload?.contact?.phone || payload?.phone);
     const email = normalize(payload?.contact?.email || payload?.email);
 
-    if (name)  kv.push(["Ad Soyad", name]);
+    if (name) kv.push(["Ad Soyad", name]);
     if (phone) kv.push(["Telefon", phone]);
     if (email) kv.push(["E-posta", email]);
 
     if (category) kv.push(["Hukuk Alanı", category]);
-    if (urgency)  kv.push(["Aciliyet", urgency]);
+    if (urgency) kv.push(["Aciliyet", urgency]);
 
     const eventDate =
       normalize(payload?.dates?.event) ||
@@ -136,38 +136,38 @@ const category = categoryMap[categoryRaw] || categoryRaw;
       "";
 
     if (eventDate) kv.push(["Olay Tarihi / Aralık", eventDate]);
-    if (deadline)  kv.push(["Kritik Tarih / Son Gün", deadline]);
+    if (deadline) kv.push(["Kritik Tarih / Son Gün", deadline]);
 
     const meetingMode =
-  normalize(payload?.preferred_meeting?.mode) ||
-  normalize(payload?.meeting_mode) ||
-  "";
+      normalize(payload?.preferred_meeting?.mode) ||
+      normalize(payload?.meeting_mode) ||
+      "";
 
-const meetingDate =
-  normalize(payload?.preferred_meeting?.date) ||
-  normalize(payload?.meeting_date) ||
-  "";
+    const meetingDate =
+      normalize(payload?.preferred_meeting?.date) ||
+      normalize(payload?.meeting_date) ||
+      "";
 
-const meetingTime =
-  normalize(payload?.preferred_meeting?.time) ||
-  normalize(payload?.meeting_time) ||
-  "";
+    const meetingTime =
+      normalize(payload?.preferred_meeting?.time) ||
+      normalize(payload?.meeting_time) ||
+      "";
 
-const meetingDateTime =
-  normalize(payload?.preferred_meeting?.datetime) ||
-  normalize(payload?.meeting_datetime) ||
-  "";
+    const meetingDateTime =
+      normalize(payload?.preferred_meeting?.datetime) ||
+      normalize(payload?.meeting_datetime) ||
+      "";
 
 
-if (meetingMode) kv.push(["Görüşme Tercihi", meetingMode]);
+    if (meetingMode) kv.push(["Görüşme Tercihi", meetingMode]);
 
-if (meetingDate || meetingTime || meetingDateTime) {
-  if (meetingDate) kv.push(["Görüşme Tarihi", meetingDate]);
-  if (meetingTime) kv.push(["Görüşme Saati", meetingTime]);
-  if (!meetingDate && !meetingTime && meetingDateTime) {
-    kv.push(["Görüşme Tarih/Saat", meetingDateTime]);
-  }
-} 
+    if (meetingDate || meetingTime || meetingDateTime) {
+      if (meetingDate) kv.push(["Görüşme Tarihi", meetingDate]);
+      if (meetingTime) kv.push(["Görüşme Saati", meetingTime]);
+      if (!meetingDate && !meetingTime && meetingDateTime) {
+        kv.push(["Görüşme Tarih/Saat", meetingDateTime]);
+      }
+    }
 
     if (summary) kv.push(["Konu (Özet)", summary]);
 
@@ -224,9 +224,9 @@ if (meetingDate || meetingTime || meetingDateTime) {
     const isReplyToValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(replyToEmail);
 
     const emailObj = new SendSmtpEmail();
-    emailObj.sender      = { email: from, name: fromName };
-    emailObj.to          = toList;
-    emailObj.subject     = subject;
+    emailObj.sender = { email: from, name: fromName };
+    emailObj.to = toList;
+    emailObj.subject = subject;
     emailObj.htmlContent = htmlBody;
     emailObj.textContent = textBody;
 
@@ -238,7 +238,7 @@ if (meetingDate || meetingTime || meetingDateTime) {
     console.log("[handoff] sendHandoffEmail", { kind, to, from, subject });
 
     const resp = await brevo.sendTransacEmail(emailObj);
-    const data  = await readIncomingMessageJSON(resp);
+    const data = await readIncomingMessageJSON(resp);
     const msgId = data?.messageId || data?.messageIds?.[0] || null;
 
     console.log("[handoff] sendHandoffEmail OK", { messageId: msgId });
@@ -342,9 +342,9 @@ console.log("[brand] keys:", Object.keys(BRANDS || {}));
 
 /* ==================== OpenAI Config ==================== */
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const ASSISTANT_ID   = process.env.ASSISTANT_ID;
-const OPENAI_BASE    = process.env.OPENAI_BASE || "https://api.openai.com/v1";
-const PORT           = process.env.PORT || 8787;
+const ASSISTANT_ID = process.env.ASSISTANT_ID;
+const OPENAI_BASE = process.env.OPENAI_BASE || "https://api.openai.com/v1";
+const PORT = process.env.PORT || 8787;
 
 const hasAnyBrandAssistant = Object.values(BRANDS || {}).some(
   b => b && b.assistant_id
@@ -412,7 +412,7 @@ function buildRunInstructions(brandKey, brandCfg = {}) {
     ``,
 
     `PRACTICE AREAS (CLASSIFY THE TOPIC)`,
-    `- Classify the case into one primary area (or "Diğer"):` ,
+    `- Classify the case into one primary area (or "Diğer"):`,
     `  • Aile Hukuku (boşanma, velayet, nafaka, mal rejimi)`,
     `  • Ceza Hukuku (soruşturma, ifade, kovuşturma, duruşma süreci)`,
     `  • İş Hukuku (işe iade, kıdem/ihbar, alacaklar)`,
@@ -434,22 +434,23 @@ function buildRunInstructions(brandKey, brandCfg = {}) {
 
 If the user asks for an appointment, attorney contact, or says "randevu istiyorum":
 
-Ask ONLY for these 3 required items, in a single short message:
+Ask for these items (you can ask in 1 or 2 steps to be natural):
 - Ad Soyad
 - Telefon numarası
 - Kısa konu özeti (1–2 cümle)
+- Görüşme tercihi (Online / Yüz Yüze)
+- Uygun zaman (Tarih ve Saat önerisi)
 
-Optional (only if the user wants to add):
+Optional:
 - Şehir / ilçe
-- Online veya yüz yüze görüşme tercihi
 
 Do NOT ask for:
-- Critical dates
-- Documents
+- Legal specific deadline dates (hak düşürücü süreler)
+- Documents (unless user offers)
 - Detailed timelines
 - Category selection lists
 
-If the user provides name + phone + short summary:
+If the user provides name + phone + short summary + meeting preferences:
 This counts as implicit consent to forward the request.
 Do NOT ask for confirmation or approval.
 Immediately prepare and send the handoff.
@@ -468,9 +469,9 @@ HANDOFF PROTOCOL (SINGLE UNIVERSAL REQUEST)
 
 Produce a handoff when:
 -The user requests an appointment or attorney contact, AND
--The user has provided name, phone number, and a short issue summary.
+-The user has provided name, phone, summary, AND meeting preferences (mode/time).
 
-Once contact details are provided, this is considered consent.
+Once these details are collected, this is considered consent.
 Do NOT ask for additional confirmation or approval.
 `,
     `Handoff Format (MUST match exactly):`,
@@ -479,10 +480,11 @@ Do NOT ask for additional confirmation or approval.
     `    "handoff": "customer_request",`,
     `    "payload": {`,
     `      "contact": { "name": "<Ad Soyad>", "phone": "<+905xx...>", "email": "<varsa@eposta>" },`,
+    `      "preferred_meeting": { "mode": "<online|yüz yüze>", "date": "<gün ay yıl>", "time": "<saat>" },`,
     `      "matter": { "category": "<aile|ceza|is|icra|kira|tazminat|diger>", "urgency": "<acil|normal>" },`,
     `      "request": {`,
     `        "summary": "<tek satır konu özeti>",`,
-    `        "details": "<3-8 cümle olay özeti + kritik tarih/süre + belge var/yok + şehir/ilçe + görüşme tercihi/zaman>"`,
+    `        "details": "<3-8 cümle olay özeti + ek detaylar>"`,
     `      }`,
     `    }`,
     `  }`,
@@ -742,7 +744,7 @@ function extractHandoff(text = "") {
     if (fence?.[1]) {
       const raw = fence[1].trim();
       let obj = null;
-      try { obj = JSON.parse(raw); } catch (_) {}
+      try { obj = JSON.parse(raw); } catch (_) { }
 
       if (obj && typeof obj === "object") {
         const handoffVal = obj.handoff || obj.kind || obj.type || null;
@@ -797,7 +799,7 @@ function resolveEmailRouting(brandCfg) {
   // Alıcı (to): SADECE brandCfg veya env’den gelsin
   const to =
     brandCfg?.handoffEmailTo ||          // Marka özel handoff alıcısı
-    brandCfg?.contactEmail  ||           // Markanın genel iletişim adresi
+    brandCfg?.contactEmail ||           // Markanın genel iletişim adresi
     process.env.HANDOFF_TO;              // Ortak ortam değişkeni
 
   // Gönderen (from): Brevo’da doğrulanmış sender tercih edilir
@@ -970,7 +972,7 @@ function normalizeHandoffPayload(payload = {}) {
 
 function sanitizeHandoffPayload(payload, kind, brandCfg) {
   const out = JSON.parse(JSON.stringify(payload || {})); // deep copy
-  
+
   // ✅ Model bazen wrapper objeyi ({handoff, payload}) döndürür.
   // Bu durumda asıl veriyi out.payload içinden al.
   if (out && typeof out === "object" && out.payload && (out.handoff || out.kind || out.type)) {
@@ -1003,7 +1005,7 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
   }
 
   // 2) Hukuk botu: handoff minimum doğrulama (customer_request / case_intake)
-    // ✅ Normalize (kök çözüm): name/phone/summary alanlarını tek yerde toparla
+  // ✅ Normalize (kök çözüm): name/phone/summary alanlarını tek yerde toparla
   const normalized = normalizeHandoffPayload(out);
   // out const olduğu için alanları overwrite ediyoruz
   Object.assign(out, normalized);
@@ -1036,7 +1038,7 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
   if (!out.contact.phone) out.contact.phone = phoneRaw;
   if (!out.contact.email && out.email) out.contact.email = out.email;
 
-    // --- Mailde sohbet/handoff bloğu görünmesin diye: details temizliği ---
+  // --- Mailde sohbet/handoff bloğu görünmesin diye: details temizliği ---
   if (out?.request?.details) {
     out.request.details = String(out.request.details)
       .replace(/```[\s\S]*?```/g, "")      // fenced blokları tamamen sil
@@ -1054,10 +1056,10 @@ function sanitizeHandoffPayload(payload, kind, brandCfg) {
     out.request.summary = "Randevu talebi";
   }
 
-const stripFenced = (s = "") => String(s).replace(/```[\s\S]*?```/g, "").trim();
+  const stripFenced = (s = "") => String(s).replace(/```[\s\S]*?```/g, "").trim();
 
-if (out?.request?.summary) out.request.summary = stripFenced(out.request.summary);
-if (out?.request?.details) out.request.details = stripFenced(out.request.details);
+  if (out?.request?.summary) out.request.summary = stripFenced(out.request.summary);
+  if (out?.request?.details) out.request.details = stripFenced(out.request.details);
 
   return out;
 }
@@ -1216,8 +1218,8 @@ async function logChatMessage({
 
       // 1) Konuşmayı upsert et (thread_id unique)
       // ✅ NEW: visitor/session bilgileri varsa conversations'a yaz / güncelle
-     const convRes = await client.query(
-  `
+      const convRes = await client.query(
+        `
   INSERT INTO conversations (thread_id, brand_key, visitor_id, session_id, source, created_at, last_message_at)
   VALUES ($1, $2, $3, $4, $5, now(), now())
   ON CONFLICT (thread_id)
@@ -1229,30 +1231,30 @@ async function logChatMessage({
     source = COALESCE(conversations.source, EXCLUDED.source)
   RETURNING id
   `,
-  [threadId, brandKey || null, visitorId || null, sessionId || null, source ? JSON.stringify(source) : null]
-);
+        [threadId, brandKey || null, visitorId || null, sessionId || null, source ? JSON.stringify(source) : null]
+      );
 
 
       const conversationId = convRes.rows[0].id;
 
       // 2) Mesajı ekle
       await client.query(
-  `
+        `
   INSERT INTO messages
     (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, meta, created_at)
   VALUES
     ($1, $2, $3, $4, $5, $6, $7, now())
   `,
-  [
-    conversationId,
-    role,
-    text || null,
-    rawText || null,
-    handoff ? handoff.kind || null : null,
-    handoff ? JSON.stringify(handoff.payload || null) : null,
-    meta ? JSON.stringify(meta) : null,
-  ]
-);
+        [
+          conversationId,
+          role,
+          text || null,
+          rawText || null,
+          handoff ? handoff.kind || null : null,
+          handoff ? JSON.stringify(handoff.payload || null) : null,
+          meta ? JSON.stringify(meta) : null,
+        ]
+      );
 
 
       await client.query("COMMIT");
@@ -1296,58 +1298,58 @@ app.post("/api/chat/stream", chatLimiter, async (req, res) => {
       return res.status(400).json({ error: "missing_params", detail: "threadId and message are required" });
     }
 
-   // BRAND: brandKey zorunlu ve whitelist kontrolü
+    // BRAND: brandKey zorunlu ve whitelist kontrolü
     const brandCfg = getBrandConfig(brandKey);
     if (!brandCfg) {
       return res.status(403).json({ error: "unknown_brand", detail: "brandKey not allowed or missing" });
     }
-    
+
     // 🔴 BURAYA EKLE: user mesajını logla
-await logChatMessage({
-  brandKey,
-  threadId,
-  role: "user",
-  text: message,
-  rawText: message,
-  handoff: null,
-  visitorId,
-  sessionId,
-  source,
-  meta
-});
+    await logChatMessage({
+      brandKey,
+      threadId,
+      role: "user",
+      text: message,
+      rawText: message,
+      handoff: null,
+      visitorId,
+      sessionId,
+      source,
+      meta
+    });
 
 
-    
-   // SSE başlıkları
-res.writeHead(200, {
-  "Content-Type": "text/event-stream; charset=utf-8",
-  "Cache-Control": "no-cache, no-transform",
-  "Connection": "keep-alive",
-  "X-Accel-Buffering": "no",
-});
 
-// 🔌 Düzenli nabız gönder (yorum satırı SSE: client'a görünmez)
-const KA_MS = 20_000; // 20 sn: 15–30 arası güvenli
+    // SSE başlıkları
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no",
+    });
 
-const keepAlive = setInterval(() => {
-  try { res.write(`: keep-alive ${Date.now()}\n\n`); } catch {}
-}, KA_MS);
+    // 🔌 Düzenli nabız gönder (yorum satırı SSE: client'a görünmez)
+    const KA_MS = 20_000; // 20 sn: 15–30 arası güvenli
 
-let clientClosed = false;
-req.on("close", () => {
-  clientClosed = true;
-  try { clearInterval(keepAlive); } catch {}
-  try { res.end(); } catch {}
-});
+    const keepAlive = setInterval(() => {
+      try { res.write(`: keep-alive ${Date.now()}\n\n`); } catch { }
+    }, KA_MS);
 
-   // 1) Kullanıcı mesajını threade ekle
-await openAI(`/threads/${threadId}/messages`, {
-  method: "POST",
-  body: { role: "user", content: message },
-});
+    let clientClosed = false;
+    req.on("close", () => {
+      clientClosed = true;
+      try { clearInterval(keepAlive); } catch { }
+      try { res.end(); } catch { }
+    });
 
-// 2) Run'ı STREAM modda başlat (assistant_id: brand öncelikli, yoksa global fallback)
-const upstream = await fetch(`${OPENAI_BASE}/threads/${threadId}/runs`, {
+    // 1) Kullanıcı mesajını threade ekle
+    await openAI(`/threads/${threadId}/messages`, {
+      method: "POST",
+      body: { role: "user", content: message },
+    });
+
+    // 2) Run'ı STREAM modda başlat (assistant_id: brand öncelikli, yoksa global fallback)
+    const upstream = await fetch(`${OPENAI_BASE}/threads/${threadId}/runs`, {
 
       method: "POST",
       headers: {
@@ -1357,13 +1359,13 @@ const upstream = await fetch(`${OPENAI_BASE}/threads/${threadId}/runs`, {
         "Accept": "text/event-stream",
       },
       body: JSON.stringify({
-  assistant_id: brandCfg.assistant_id || ASSISTANT_ID,
-  stream: true,
-  metadata: { brandKey }, // izleme
-  // ✅ Hukuk botu run talimatı (kritik)
-  instructions: buildRunInstructions(brandKey, brandCfg),
+        assistant_id: brandCfg.assistant_id || ASSISTANT_ID,
+        stream: true,
+        metadata: { brandKey }, // izleme
+        // ✅ Hukuk botu run talimatı (kritik)
+        instructions: buildRunInstructions(brandKey, brandCfg),
 
-}),
+      }),
 
     });
 
@@ -1372,271 +1374,272 @@ const upstream = await fetch(`${OPENAI_BASE}/threads/${threadId}/runs`, {
       throw new Error(`OpenAI stream start failed ${upstream.status}: ${errText}`);
     }
 
-  // Handoff tespiti için metni biriktirelim (KULLANICIYA GÖSTERMEYİZ)
-let buffer = "";
-let accTextOriginal = "";   // e-posta/parse için ORİJİNAL metin
-const decoder = new TextDecoder();
-const reader  = upstream.body.getReader();
+    // Handoff tespiti için metni biriktirelim (KULLANICIYA GÖSTERMEYİZ)
+    let buffer = "";
+    let accTextOriginal = "";   // e-posta/parse için ORİJİNAL metin
+    const decoder = new TextDecoder();
+    const reader = upstream.body.getReader();
 
 
-// Fenced blocks (``` ... ```) gizleme + chunk boundary fix (tail overlap yok)
-let inFencedBlock = false;
-let fenceTail = ""; // sadece "```" yakalamak için, kullanıcıya BASILMAZ
+    // Fenced blocks (``` ... ```) gizleme + chunk boundary fix (tail overlap yok)
+    let inFencedBlock = false;
+    let fenceTail = ""; // sadece "```" yakalamak için, kullanıcıya BASILMAZ
 
-function sanitizeDeltaText(chunk) {
-  if (!chunk) return "";
+    function sanitizeDeltaText(chunk) {
+      if (!chunk) return "";
 
-  const tailLen = fenceTail.length;      // genelde 2
-  const merged = fenceTail + chunk;      // sadece arama amacıyla birleştiriyoruz
-  fenceTail = merged.slice(-2);          // sonraki chunk için son 2 karakteri sakla
+      const tailLen = fenceTail.length;      // genelde 2
+      const merged = fenceTail + chunk;      // sadece arama amacıyla birleştiriyoruz
+      fenceTail = merged.slice(-2);          // sonraki chunk için son 2 karakteri sakla
 
-  let out = "";
-  let i = 0;
+      let out = "";
+      let i = 0;
 
-  // Yardımcı: merged içinden parça eklerken tail kısmını ASLA kullanıcıya ekleme
-  const appendSafe = (from, to) => {
-    const a = Math.max(from, tailLen);
-    const b = Math.max(to, tailLen);
-    if (b > a) out += merged.slice(a, b);
-  };
-
-  while (i < merged.length) {
-    if (!inFencedBlock) {
-      const start = merged.indexOf("```", i);
-      if (start === -1) {
-        appendSafe(i, merged.length);
-        break;
-      }
-      appendSafe(i, start);
-      inFencedBlock = true;
-      i = start + 3;
-    } else {
-      const end = merged.indexOf("```", i);
-      if (end === -1) {
-        // fence içindeyiz; bu chunk’ta kapanış yok -> kalan her şeyi yut
-        break;
-      }
-      inFencedBlock = false;
-      i = end + 3;
-    }
-  }
-
-  return out;
-}
-
-
-
-
-// 3) OpenAI’den gelen SSE’yi sanitize ederek client'a aktar + orijinali topla
-let sawHandoffSignal = false; // delta sırasında metadata.handoff görürsek işaretle
-
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-  if (clientClosed) break;
-
-  const piece = decoder.decode(value, { stream: true });
-  buffer += piece;
-
-  const lines = buffer.split("\n");
-  buffer = lines.pop() || ""; // eksik satır
-
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("data:")) continue;
-    const dataStr = trimmed.slice(5).trim();
-    if (!dataStr || dataStr === "[DONE]") continue;
-
-    try {
-      const evt = JSON.parse(dataStr);
-
-      // --- STREAM HANDLER: her delta paketinde handoff sinyali var mı? ---
-      // (farklı şekiller için 3 kaynaktan da bak: choices[].delta, evt.delta, evt.message)
-      const metaDeltaA = evt?.choices?.[0]?.delta?.metadata;
-      const metaDeltaB = evt?.delta?.metadata;
-      const metaDeltaC = evt?.message?.metadata;
-      const metaDelta  = metaDeltaA ?? metaDeltaB ?? metaDeltaC;
-
-      if (metaDelta !== undefined) {
-        console.log("[handoff][detect:delta]", {
-          hasMeta: true,
-          handoff: metaDelta?.handoff,
-          keys: metaDelta ? Object.keys(metaDelta) : []
-        });
-        if (metaDelta?.handoff === true) {
-          sawHandoffSignal = true;
-        }
-      }
-
-      // 1) ORİJİNAL metni topla (mail/parse için)
-      if (evt?.delta?.content && Array.isArray(evt.delta.content)) {
-        for (const c of evt.delta.content) {
-          if (c?.type === "text" && c?.text?.value) {
-            accTextOriginal += c.text.value;
-          }
-        }
-      }
-      if (evt?.message?.content && Array.isArray(evt.message.content)) {
-        for (const c of evt.message.content) {
-          if (c?.type === "text" && c?.text?.value) {
-            accTextOriginal += c.text.value;
-          }
-        }
-      }
-
-      // 2) KULLANICIYA GİDECEK EVENT'i sanitize et (handoff bloklarını gizle)
-      const evtOut = JSON.parse(JSON.stringify(evt)); // shallow clone
-
-      const sanitizeContentArray = (arr) => {
-        for (const c of arr) {
-          if (c?.type === "text" && c?.text?.value) {
-            c.text.value = sanitizeDeltaText(c.text.value);
-            // Son çivi: "handoff": geçen bir şey kalırsa komple kırp
-if (/"handoff"\s*:|```handoff/i.test(c.text.value)) {
-  c.text.value = c.text.value.replace(/```[\s\S]*$/g, "").trim();
-}
-
-            // defensive: "handoff" kelimesi geçen fenced parçalar bazen fence’siz sızabilir
-         c.text.value = c.text.value.replace(/```handoff[\s\S]*?```/gi, "");
-
-          }
-        }
+      // Yardımcı: merged içinden parça eklerken tail kısmını ASLA kullanıcıya ekleme
+      const appendSafe = (from, to) => {
+        const a = Math.max(from, tailLen);
+        const b = Math.max(to, tailLen);
+        if (b > a) out += merged.slice(a, b);
       };
 
-      if (evtOut?.delta?.content && Array.isArray(evtOut.delta.content)) {
-        sanitizeContentArray(evtOut.delta.content);
-      }
-      if (evtOut?.message?.content && Array.isArray(evtOut.message.content)) {
-        sanitizeContentArray(evtOut.message.content);
+      while (i < merged.length) {
+        if (!inFencedBlock) {
+          const start = merged.indexOf("```", i);
+          if (start === -1) {
+            appendSafe(i, merged.length);
+            break;
+          }
+          appendSafe(i, start);
+          inFencedBlock = true;
+          i = start + 3;
+        } else {
+          const end = merged.indexOf("```", i);
+          if (end === -1) {
+            // fence içindeyiz; bu chunk’ta kapanış yok -> kalan her şeyi yut
+            break;
+          }
+          inFencedBlock = false;
+          i = end + 3;
+        }
       }
 
-      // 3) Sanitized event'i client'a yaz
-      res.write(`data: ${JSON.stringify(evtOut)}\n\n`);
-    } catch (err) {
-      // parse edilemeyen satırları olduğu gibi geçirmek istersen:
-      // res.write(`data: ${dataStr}\n\n`);
-      console.warn("[stream][parse] non-JSON line forwarded or skipped:", err?.message);
+      return out;
     }
-  }
-}
-
-// 4) Stream bitti → handoff varsa maille (brandCfg ile)
-console.log("[handoff][debug] accTextOriginal.len =", accTextOriginal.length,
-  "```handoff fence?", /```handoff/i.test(accTextOriginal),
-  "```json fence?", /```json/i.test(accTextOriginal),
-  "fenced handoff key?", /```[\s\S]*\"handoff\"\s*:/.test(accTextOriginal),
-  "<handoff> tag?", /<handoff>/i.test(accTextOriginal),
-  "[[HANDOFF: base64]?", /\[\[HANDOFF:/i.test(accTextOriginal)
-);
-
-
-let handoff = extractHandoff(accTextOriginal);
-
-// Fallback: explicit block yoksa metinden çıkar
-if (!handoff) {
-  // fallback SADECE kullanıcı mesajından yapılmalı (asistan metninden değil)
-  const inferred = inferHandoffFromText(message);
-  if (inferred) {
-    handoff = inferred;
-  }
-}
 
 
 
 
-const { to: toAddr, from: fromAddr } = resolveEmailRouting(brandCfg);
+    // 3) OpenAI’den gelen SSE’yi sanitize ederek client'a aktar + orijinali topla
+    let sawHandoffSignal = false; // delta sırasında metadata.handoff görürsek işaretle
 
-console.log("[handoff] PREP(stream-end)", {
-  sawHandoffSignal: !!handoff,
-  to: toAddr,
-  from: fromAddr
-});
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (clientClosed) break;
+
+      const piece = decoder.decode(value, { stream: true });
+      buffer += piece;
+
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || ""; // eksik satır
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("data:")) continue;
+        const dataStr = trimmed.slice(5).trim();
+        if (!dataStr || dataStr === "[DONE]") continue;
+
+        try {
+          const evt = JSON.parse(dataStr);
+
+          // --- STREAM HANDLER: her delta paketinde handoff sinyali var mı? ---
+          // (farklı şekiller için 3 kaynaktan da bak: choices[].delta, evt.delta, evt.message)
+          const metaDeltaA = evt?.choices?.[0]?.delta?.metadata;
+          const metaDeltaB = evt?.delta?.metadata;
+          const metaDeltaC = evt?.message?.metadata;
+          const metaDelta = metaDeltaA ?? metaDeltaB ?? metaDeltaC;
+
+          if (metaDelta !== undefined) {
+            console.log("[handoff][detect:delta]", {
+              hasMeta: true,
+              handoff: metaDelta?.handoff,
+              keys: metaDelta ? Object.keys(metaDelta) : []
+            });
+            if (metaDelta?.handoff === true) {
+              sawHandoffSignal = true;
+            }
+          }
+
+          // 1) ORİJİNAL metni topla (mail/parse için)
+          if (evt?.delta?.content && Array.isArray(evt.delta.content)) {
+            for (const c of evt.delta.content) {
+              if (c?.type === "text" && c?.text?.value) {
+                accTextOriginal += c.text.value;
+              }
+            }
+          }
+          if (evt?.message?.content && Array.isArray(evt.message.content)) {
+            for (const c of evt.message.content) {
+              if (c?.type === "text" && c?.text?.value) {
+                accTextOriginal += c.text.value;
+              }
+            }
+          }
+
+          // 2) KULLANICIYA GİDECEK EVENT'i sanitize et (handoff bloklarını gizle)
+          const evtOut = JSON.parse(JSON.stringify(evt)); // shallow clone
+
+          const sanitizeContentArray = (arr) => {
+            for (const c of arr) {
+              if (c?.type === "text" && c?.text?.value) {
+                c.text.value = sanitizeDeltaText(c.text.value);
+                // Son çivi: "handoff": geçen bir şey kalırsa komple kırp
+                if (/"handoff"\s*:|```handoff/i.test(c.text.value)) {
+                  c.text.value = c.text.value.replace(/```[\s\S]*$/g, "").trim();
+                }
+
+                // defensive: "handoff" kelimesi geçen fenced parçalar bazen fence’siz sızabilir
+                c.text.value = c.text.value.replace(/```handoff[\s\S]*?```/gi, "");
+
+              }
+            }
+          };
+
+          if (evtOut?.delta?.content && Array.isArray(evtOut.delta.content)) {
+            sanitizeContentArray(evtOut.delta.content);
+          }
+          if (evtOut?.message?.content && Array.isArray(evtOut.message.content)) {
+            sanitizeContentArray(evtOut.message.content);
+          }
+
+          // 3) Sanitized event'i client'a yaz
+          res.write(`data: ${JSON.stringify(evtOut)}\n\n`);
+        } catch (err) {
+          // parse edilemeyen satırları olduğu gibi geçirmek istersen:
+          // res.write(`data: ${dataStr}\n\n`);
+          console.warn("[stream][parse] non-JSON line forwarded or skipped:", err?.message);
+        }
+      }
+    }
+
+    // 4) Stream bitti → handoff varsa maille (brandCfg ile)
+    console.log("[handoff][debug] accTextOriginal.len =", accTextOriginal.length,
+      "```handoff fence?", /```handoff/i.test(accTextOriginal),
+      "```json fence?", /```json/i.test(accTextOriginal),
+      "fenced handoff key?", /```[\s\S]*\"handoff\"\s*:/.test(accTextOriginal),
+      "<handoff> tag?", /<handoff>/i.test(accTextOriginal),
+      "[[HANDOFF: base64]?", /\[\[HANDOFF:/i.test(accTextOriginal)
+    );
+
+
+    let handoff = extractHandoff(accTextOriginal);
+
+    // Fallback: explicit block yoksa metinden çıkar
+    if (!handoff) {
+      // fallback SADECE kullanıcı mesajından yapılmalı (asistan metninden değil)
+      const inferred = inferHandoffFromText(message);
+      if (inferred) {
+        handoff = inferred;
+      }
+    }
 
 
 
-if (handoff) {
-  // 1) duplicate engeli (kalsın)
-  if (isDuplicateHandoff(threadId, handoff.payload)) {
-    console.log("[handoff][gate][stream] blocked duplicate payload");
-    handoff = null;
-  }
 
-  if (!handoff) {
-    console.log("[handoff][stream] not sending (gated)");
-  } else {
-    try {
-      const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
+    const { to: toAddr, from: fromAddr } = resolveEmailRouting(brandCfg);
 
-      // 2) Minimum bilgi yoksa mail YOK
-      if (!hasMinimumHandoffData(clean)) {
-        console.log("[handoff][gate][stream] blocked (missing minimum data)");
+    console.log("[handoff] PREP(stream-end)", {
+      sawHandoffSignal: !!handoff,
+      to: toAddr,
+      from: fromAddr
+    });
+
+
+
+    if (handoff) {
+      // 1) duplicate engeli (kalsın)
+      if (isDuplicateHandoff(threadId, handoff.payload)) {
+        console.log("[handoff][gate][stream] blocked duplicate payload");
+        handoff = null;
+      }
+
+      if (!handoff) {
+        console.log("[handoff][stream] not sending (gated)");
       } else {
-        await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
+        try {
+          const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
 
-await pushHandoffToSheets({
-  ts: new Date().toISOString(),
-  brandKey,
-  kind: handoff.kind,
-  threadId,
-  visitorId: visitorId || null,
-  sessionId: sessionId || null,
-  source: source || null,
-  meta: meta || null,
-  payload: clean
-});
+          // 2) Minimum bilgi yoksa mail YOK
+          if (!hasMinimumHandoffData(clean)) {
+            console.log("[handoff][gate][stream] blocked (missing minimum data)");
+          } else {
+            await sendHandoffEmail({ brandKey, kind: handoff.kind, payload: clean, brandCfg });
 
-console.log("[handoff][stream] SENT");
+            await pushHandoffToSheets({
+              ts: new Date().toISOString(),
+              brandKey,
+              kind: handoff.kind,
+              threadId,
+              visitorId: visitorId || null,
+              sessionId: sessionId || null,
+              source: source || null,
+              meta: meta || null,
+              payload: clean
+            });
 
-        console.log("[handoff][stream] SENT");
+            console.log("[handoff][stream] SENT");
+
+            console.log("[handoff][stream] SENT");
+          }
+        } catch (e) {
+          console.error("[handoff][stream] email failed or dropped:", {
+            message: e?.message,
+            code: e?.code,
+          });
+          console.error(
+            "[handoff][stream] payload snapshot:",
+            JSON.stringify(handoff?.payload || {}, null, 2)
+          );
+        }
       }
-    } catch (e) {
-      console.error("[handoff][stream] email failed or dropped:", {
-        message: e?.message,
-        code: e?.code,
-      });
-      console.error(
-        "[handoff][stream] payload snapshot:",
-        JSON.stringify(handoff?.payload || {}, null, 2)
-      );
     }
-  }
-}
 
 
-// 🔵 BURAYA: assistant cevabını logla
-try {
-  const cleanText = accTextOriginal.replace(/```[\s\S]*?```/g, "").trim();
- await logChatMessage({
-  brandKey,
-  threadId,
-  role: "assistant",
-  text: cleanText,
-  rawText: accTextOriginal,
-  handoff,
-  visitorId,
-  sessionId,
-  source,
-  meta
-});
+    // 🔵 BURAYA: assistant cevabını logla
+    try {
+      const cleanText = accTextOriginal.replace(/```[\s\S]*?```/g, "").trim();
+      await logChatMessage({
+        brandKey,
+        threadId,
+        role: "assistant",
+        text: cleanText,
+        rawText: accTextOriginal,
+        handoff,
+        visitorId,
+        sessionId,
+        source,
+        meta
+      });
 
-} catch (e) {
-  console.error("[db] logChatMessage (stream assistant) error:", e);
-}
+    } catch (e) {
+      console.error("[db] logChatMessage (stream assistant) error:", e);
+    }
 
 
-// 5) Bitiş işareti
-try {
-  res.write("data: [DONE]\n\n");
-  clearInterval(keepAlive);
-  res.end();
-} catch (e) {
-  // yoksay
-}  } catch (e) {
+    // 5) Bitiş işareti
+    try {
+      res.write("data: [DONE]\n\n");
+      clearInterval(keepAlive);
+      res.end();
+    } catch (e) {
+      // yoksay
+    }
+  } catch (e) {
     console.error("[stream] fatal:", e);
-    try { res.write(`data: ${JSON.stringify({ error: "stream_failed" })}\n\n`); } catch (__) {}
-    try { res.write("data: [DONE]\n\n"); } catch (__) {}
-    try { clearInterval(keepAlive); } catch (__) {}
-    try { res.end(); } catch (__) {}
+    try { res.write(`data: ${JSON.stringify({ error: "stream_failed" })}\n\n`); } catch (__) { }
+    try { res.write("data: [DONE]\n\n"); } catch (__) { }
+    try { clearInterval(keepAlive); } catch (__) { }
+    try { res.end(); } catch (__) { }
   }
 }); // /api/chat/stream KAPANIŞ
 
@@ -1686,47 +1689,47 @@ app.post("/api/chat/message", chatLimiter, async (req, res) => {
     return res.status(400).json({ error: "missing_params", detail: "threadId and message are required" });
   }
 
- // BRAND: brandKey zorunlu ve whitelist kontrolü
-const brandCfg = getBrandConfig(brandKey);
-if (!brandCfg) {
-  return res.status(403).json({ error: "unknown_brand", detail: "brandKey not allowed or missing" });
-}
+  // BRAND: brandKey zorunlu ve whitelist kontrolü
+  const brandCfg = getBrandConfig(brandKey);
+  if (!brandCfg) {
+    return res.status(403).json({ error: "unknown_brand", detail: "brandKey not allowed or missing" });
+  }
 
-try {
-  //  BURAYA: user mesajını logla
-  await logChatMessage({
-  brandKey,
-  threadId,
-  role: "user",
-  text: message,
-  rawText: message,
-  handoff: null,
-  visitorId,
-  sessionId,
-  source,
-  meta
-});
+  try {
+    //  BURAYA: user mesajını logla
+    await logChatMessage({
+      brandKey,
+      threadId,
+      role: "user",
+      text: message,
+      rawText: message,
+      handoff: null,
+      visitorId,
+      sessionId,
+      source,
+      meta
+    });
 
 
-  // 2.a) Mesajı threade ekle
-  await openAI(`/threads/${threadId}/messages`, {
-    method: "POST",
-    body: { role: "user", content: message },
-  });
+    // 2.a) Mesajı threade ekle
+    await openAI(`/threads/${threadId}/messages`, {
+      method: "POST",
+      body: { role: "user", content: message },
+    });
 
     // 2.b) Run oluştur  (assistant_id: brand öncelikli, yoksa global fallback)
- // 2.b) Run oluştur  (assistant_id: brand öncelikli, yoksa global fallback)
-const run = await openAI(`/threads/${threadId}/runs`, {
-  method: "POST",
-  body: {
-    assistant_id: brandCfg.assistant_id || ASSISTANT_ID,
-    metadata: { brandKey },
+    // 2.b) Run oluştur  (assistant_id: brand öncelikli, yoksa global fallback)
+    const run = await openAI(`/threads/${threadId}/runs`, {
+      method: "POST",
+      body: {
+        assistant_id: brandCfg.assistant_id || ASSISTANT_ID,
+        metadata: { brandKey },
 
-    // ✅ Hukuk botu run talimatı (kritik)
-    instructions: buildRunInstructions(brandKey, brandCfg)
+        // ✅ Hukuk botu run talimatı (kritik)
+        instructions: buildRunInstructions(brandKey, brandCfg)
 
-  },
-});
+      },
+    });
 
 
 
@@ -1743,7 +1746,7 @@ const run = await openAI(`/threads/${threadId}/runs`, {
       await new Promise(r => setTimeout(r, 1200));
       const polled = await openAI(`/threads/${threadId}/runs/${runId}`);
       runStatus = polled.status;
-      if (["failed","cancelled","expired"].includes(runStatus)) {
+      if (["failed", "cancelled", "expired"].includes(runStatus)) {
         throw new Error(`Run status: ${runStatus}`);
       }
     }
@@ -1753,128 +1756,128 @@ const run = await openAI(`/threads/${threadId}/runs`, {
     const msgs = await openAI(`/threads/${threadId}/messages?order=desc&limit=10`);
     const assistantMsg = (msgs.data || []).find(m => m.role === "assistant");
 
-  // İçerik metnini ayıkla (text parçaları)
+    // İçerik metnini ayıkla (text parçaları)
 
-// İçerik metnini ayıkla (text parçaları)
-let rawAssistantText = "";
-if (assistantMsg && assistantMsg.content) {
-  for (const part of assistantMsg.content) {
-    if (part.type === "text" && part.text?.value) {
-      rawAssistantText += part.text.value + "\n";
+    // İçerik metnini ayıkla (text parçaları)
+    let rawAssistantText = "";
+    if (assistantMsg && assistantMsg.content) {
+      for (const part of assistantMsg.content) {
+        if (part.type === "text" && part.text?.value) {
+          rawAssistantText += part.text.value + "\n";
+        }
+      }
+      rawAssistantText = rawAssistantText.trim();
     }
-  }
-  rawAssistantText = rawAssistantText.trim();
-}
 
-// Kullanıcıya asla code-fence göstermeyelim
-const stripFenced = (s = "") => s.replace(/```[\s\S]*?```/g, "").trim();
-let cleanText = stripFenced(rawAssistantText);
+    // Kullanıcıya asla code-fence göstermeyelim
+    const stripFenced = (s = "") => s.replace(/```[\s\S]*?```/g, "").trim();
+    let cleanText = stripFenced(rawAssistantText);
 
 
-{
-  const handoffProbe = extractHandoff(rawAssistantText);
-  if (!handoffProbe && /randevu|avukat|iletişime geç|arasın|ön görüşme/i.test(message)) {
-    console.warn("[handoff] no block found; assistant raw text:", rawAssistantText.slice(0, 500));
-  }
-}
+    {
+      const handoffProbe = extractHandoff(rawAssistantText);
+      if (!handoffProbe && /randevu|avukat|iletişime geç|arasın|ön görüşme/i.test(message)) {
+        console.warn("[handoff] no block found; assistant raw text:", rawAssistantText.slice(0, 500));
+      }
+    }
 
 
-   // --- Handoff JSON çıkar + e-posta ile gönder (brandConfig ile) ---
+    // --- Handoff JSON çıkar + e-posta ile gönder (brandConfig ile) ---
     let handoff = extractHandoff(rawAssistantText);
 
-// explicit yoksa metinden üret
-if (!handoff) {
-  const inferred = inferHandoffFromText(message);
-  if (inferred) {
-    handoff = inferred;
-    console.log("[handoff][fallback][poll] inferred from text");
-  }
-}
-
-// kullanıcıya dönecek metin her zaman temiz
-cleanText = stripFenced(rawAssistantText);
-
-
- if (handoff) {
-  // duplicate engeli
-  if (isDuplicateHandoff(threadId, handoff.payload)) {
-    console.log("[handoff][gate][poll] blocked duplicate payload");
-    handoff = null;
-  }
-
-  if (!handoff) {
-    console.log("[handoff][poll] not sending (gated)");
-  } else {
-    try {
-      const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
-
-      if (!hasMinimumHandoffData(clean)) {
-        console.log("[handoff][gate][poll] blocked (missing minimum data)");
-      } else {
-     await sendHandoffEmail({
-  brandKey,
-  kind: handoff.kind,
-  payload: clean,
-  brandCfg,
-});
-
-await pushHandoffToSheets({
-  ts: new Date().toISOString(),
-  brandKey,
-  kind: handoff.kind,
-  threadId,
-  visitorId: visitorId || null,
-  sessionId: sessionId || null,
-  source: source || null,
-  meta: meta || null,
-  payload: clean
-});
-
-console.log("[handoff][poll] SENT", { kind: handoff.kind });
-
-
+    // explicit yoksa metinden üret
+    if (!handoff) {
+      const inferred = inferHandoffFromText(message);
+      if (inferred) {
+        handoff = inferred;
+        console.log("[handoff][fallback][poll] inferred from text");
       }
-    } catch (e) {
-      console.error("[handoff][poll] email failed or dropped:", {
-        message: e?.message,
-        code: e?.code,
-      });
-      console.error(
-        "[handoff][poll] payload snapshot:",
-        JSON.stringify(handoff?.payload || {}, null, 2)
-      );
     }
-  }
-}
+
+    // kullanıcıya dönecek metin her zaman temiz
+    cleanText = stripFenced(rawAssistantText);
+
+
+    if (handoff) {
+      // duplicate engeli
+      if (isDuplicateHandoff(threadId, handoff.payload)) {
+        console.log("[handoff][gate][poll] blocked duplicate payload");
+        handoff = null;
+      }
+
+      if (!handoff) {
+        console.log("[handoff][poll] not sending (gated)");
+      } else {
+        try {
+          const clean = sanitizeHandoffPayload(handoff.payload, handoff.kind, brandCfg);
+
+          if (!hasMinimumHandoffData(clean)) {
+            console.log("[handoff][gate][poll] blocked (missing minimum data)");
+          } else {
+            await sendHandoffEmail({
+              brandKey,
+              kind: handoff.kind,
+              payload: clean,
+              brandCfg,
+            });
+
+            await pushHandoffToSheets({
+              ts: new Date().toISOString(),
+              brandKey,
+              kind: handoff.kind,
+              threadId,
+              visitorId: visitorId || null,
+              sessionId: sessionId || null,
+              source: source || null,
+              meta: meta || null,
+              payload: clean
+            });
+
+            console.log("[handoff][poll] SENT", { kind: handoff.kind });
+
+
+          }
+        } catch (e) {
+          console.error("[handoff][poll] email failed or dropped:", {
+            message: e?.message,
+            code: e?.code,
+          });
+          console.error(
+            "[handoff][poll] payload snapshot:",
+            JSON.stringify(handoff?.payload || {}, null, 2)
+          );
+        }
+      }
+    }
 
 
 
-// 🔵 BURAYA: assistant cevabını logla
-try {
-await logChatMessage({
-  brandKey,
-  threadId,
-  role: "assistant",
-  text: cleanText,
-  rawText: accTextOriginal,
-  handoff,
-  visitorId,
-  sessionId,
-  source,
-  meta,
-rawText: rawAssistantText,      // burada zaten fence'ler temizlenmiş metin var
-  
-  });
-} catch (e) {
-  console.error("[db] logChatMessage (poll assistant) error:", e);
-}
+    // 🔵 BURAYA: assistant cevabını logla
+    try {
+      await logChatMessage({
+        brandKey,
+        threadId,
+        role: "assistant",
+        text: cleanText,
+        rawText: accTextOriginal,
+        handoff,
+        visitorId,
+        sessionId,
+        source,
+        meta,
+        rawText: rawAssistantText,      // burada zaten fence'ler temizlenmiş metin var
 
-return res.json({
-  status: "ok",
-  threadId,
-  message: cleanText  || "(Yanıt metni bulunamadı)",
-  handoff: handoff ? { kind: handoff.kind } : null
-});
+      });
+    } catch (e) {
+      console.error("[db] logChatMessage (poll assistant) error:", e);
+    }
+
+    return res.json({
+      status: "ok",
+      threadId,
+      message: cleanText || "(Yanıt metni bulunamadı)",
+      handoff: handoff ? { kind: handoff.kind } : null
+    });
 
 
   } catch (e) {
@@ -1891,11 +1894,11 @@ app.post("/_mail_test", async (req, res) => {
     if (!apiKey) throw new Error("BREVO_API_KEY missing");
 
     const senderEmail = process.env.EMAIL_FROM || "";
-    const senderName  = process.env.EMAIL_FROM_NAME || "Assistant";
-    const toStr       = (req.body?.to || process.env.EMAIL_TO || "").trim();
+    const senderName = process.env.EMAIL_FROM_NAME || "Assistant";
+    const toStr = (req.body?.to || process.env.EMAIL_TO || "").trim();
 
     if (!senderEmail) throw new Error("EMAIL_FROM missing");
-    if (!toStr)       throw new Error("EMAIL_TO missing (or body.to not provided)");
+    if (!toStr) throw new Error("EMAIL_TO missing (or body.to not provided)");
 
     const to = toStr
       .split(",")
@@ -1903,16 +1906,16 @@ app.post("/_mail_test", async (req, res) => {
       .filter(x => x.email);
 
     const email = new SendSmtpEmail();
-    email.sender      = { email: senderEmail, name: senderName };
-    email.to          = to;
-    email.subject     = `Brevo HTTP API Test — ${new Date().toISOString()}`;
+    email.sender = { email: senderEmail, name: senderName };
+    email.to = to;
+    email.subject = `Brevo HTTP API Test — ${new Date().toISOString()}`;
     email.htmlContent = `<p>Merhaba! Bu mail Brevo HTTP API ile gönderildi.</p>`;
     email.textContent = `Merhaba! Bu mail Brevo HTTP API ile gönderildi.`;
 
     const resp = await brevo.sendTransacEmail(email);
 
     // Brevo yanıt gövdesini oku ve messageId çıkar
-    const data  = await readIncomingMessageJSON(resp);
+    const data = await readIncomingMessageJSON(resp);
     const msgId = data?.messageId || data?.messageIds?.[0] || null;
 
     console.log("[mail][test] send OK — status:",
@@ -1923,7 +1926,7 @@ app.post("/_mail_test", async (req, res) => {
     res.status(201).json({ ok: true, messageId: msgId, data });
   } catch (e) {
     const status = e?.response?.status || 400;
-    const body   = e?.response?.data || { message: e?.message || "unknown error" };
+    const body = e?.response?.data || { message: e?.message || "unknown error" };
 
     console.error("[mail][test] error:", status, body);
     res.status(status).json({ ok: false, error: body });
