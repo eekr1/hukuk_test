@@ -586,7 +586,27 @@ function hasMinimumHandoffData(cleanPayload = {}) {
     (!!dateRaw && !!timeRaw) || // ayrı alanlar doluysa
     (!!dateRaw && !timeRaw && dateRaw.includes(" ")); // "2025-01-10 14:30" gibi tek string’se
 
+  
+  // Debug log – artık NERESİ eksik görebileceksin
+  if (!hasName || !hasPhone || !hasText || !hasMode || !hasDateTime) {
+    console.log("[handoff][gate][debug]", {
+      hasName,
+      hasPhone,
+      hasText,
+      hasMode,
+      hasDateTime,
+      name,
+      phoneDigits,
+      summary,
+      details,
+      modeRaw,
+      dateRaw,
+      timeRaw,
+    });
+  }
+
   return hasName && hasPhone && hasText && hasMode && hasDateTime;
+
 }
 
 
