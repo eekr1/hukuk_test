@@ -139,17 +139,35 @@ const category = categoryMap[categoryRaw] || categoryRaw;
     if (deadline)  kv.push(["Kritik Tarih / Son Gün", deadline]);
 
     const meetingMode =
-      normalize(payload?.preferred_meeting?.mode) ||
-      normalize(payload?.meeting_mode) ||
-      "";
+  normalize(payload?.preferred_meeting?.mode) ||
+  normalize(payload?.meeting_mode) ||
+  "";
 
-    const timeWindow =
-      normalize(payload?.preferred_meeting?.time_window) ||
-      normalize(payload?.time_window) ||
-      "";
+const meetingDate =
+  normalize(payload?.preferred_meeting?.date) ||
+  normalize(payload?.meeting_date) ||
+  "";
 
-    if (meetingMode) kv.push(["Görüşme Tercihi", meetingMode]);
-    if (timeWindow)  kv.push(["Uygun Zaman Aralığı", timeWindow]);
+const meetingTime =
+  normalize(payload?.preferred_meeting?.time) ||
+  normalize(payload?.meeting_time) ||
+  "";
+
+const meetingDateTime =
+  normalize(payload?.preferred_meeting?.datetime) ||
+  normalize(payload?.meeting_datetime) ||
+  "";
+
+
+if (meetingMode) kv.push(["Görüşme Tercihi", meetingMode]);
+
+if (meetingDate || meetingTime || meetingDateTime) {
+  if (meetingDate) kv.push(["Görüşme Tarihi", meetingDate]);
+  if (meetingTime) kv.push(["Görüşme Saati", meetingTime]);
+  if (!meetingDate && !meetingTime && meetingDateTime) {
+    kv.push(["Görüşme Tarih/Saat", meetingDateTime]);
+  }
+} 
 
     if (summary) kv.push(["Konu (Özet)", summary]);
 
@@ -539,8 +557,36 @@ function hasMinimumHandoffData(cleanPayload = {}) {
   const hasPhone = phoneDigits.length >= 10; // TR için pratik eşik
   const hasText = (summary.length >= 3) || (details.length >= 3);
 
-  return hasName && hasPhone && hasText;
+  // 🔹 Yeni zorunlu alanlar: Görüşme modu + tarih & saat
+  const modeRaw =
+    String(cleanPayload?.preferred_meeting?.mode || cleanPayload?.meeting_mode || "")
+      .trim()
+      .toLowerCase();
+
+  const dateRaw =
+    String(
+      cleanPayload?.preferred_meeting?.date ||
+      cleanPayload?.meeting_date ||
+      cleanPayload?.preferred_meeting?.datetime ||
+      cleanPayload?.meeting_datetime ||
+      ""
+    ).trim();
+
+  const timeRaw =
+    String(
+      cleanPayload?.preferred_meeting?.time ||
+      cleanPayload?.meeting_time ||
+      ""
+    ).trim();
+
+  const hasMode = !!modeRaw; // "online", "yüz yüze", "yuz_yuze" vs. metin olarak
+  const hasDateTime =
+    (!!dateRaw && !!timeRaw) || // ayrı alanlar doluysa
+    (!!dateRaw && !timeRaw && dateRaw.includes(" ")); // "2025-01-10 14:30" gibi tek string’se
+
+  return hasName && hasPhone && hasText && hasMode && hasDateTime;
 }
+
 
 
 
@@ -823,13 +869,12 @@ function normalizeHandoffPayload(payload = {}) {
   }
 
   // 3) “Düz yazı” isim yakalama (telefonun önü değil; isim formatı + harf filtresi)
-  // Örn: "enis kuru 0546..." -> iki kelimelik harf ağırlıklı bir isim yakalar
   if (!name && combined) {
     const m4 = combined.match(/(^|\n)\s*([a-zA-ZığüşöçİĞÜŞÖÇ]{2,}\s+[a-zA-ZığüşöçİĞÜŞÖÇ]{2,}(?:\s+[a-zA-ZığüşöçİĞÜŞÖÇ]{2,})?)\s+(\+?\d[\d\s().-]{9,}\d)/);
     if (m4?.[2]) name = clean(m4[2]);
   }
 
-  // Name’i düzgün büyük/küçük harfe çek (TR karakterleri korur)
+  // Name’i düzgün büyük/küçük harfe çek
   if (name) {
     name = name
       .split(/\s+/)
@@ -842,15 +887,13 @@ function normalizeHandoffPayload(payload = {}) {
   if (!summary || /bilgilerinizi aldım/i.test(summary)) {
     summary = clean(detailsText);
   }
-  // Çok uzunsa kısalt
   if (summary.length > 180) summary = summary.slice(0, 180) + "…";
 
   // --- Details ---
   let details = clean(detailsText || summaryText);
-  // Çok uzunsa kısalt (mail şişmesin)
   if (details.length > 900) details = details.slice(0, 900) + "…";
 
-  // --- Apply back to payload ---
+  // --- Apply back to payload (basic contact + text) ---
   out.contact = out.contact || {};
   if (!out.contact.name && name) out.contact.name = name;
   if (!out.contact.phone && finalPhoneRaw) out.contact.phone = finalPhoneRaw;
@@ -859,13 +902,71 @@ function normalizeHandoffPayload(payload = {}) {
   if (!out.request.summary && summary) out.request.summary = summary;
   if (!out.request.details && details) out.request.details = details;
 
-  // Eski summary/details varsa fence temizle
   if (out.request.summary) out.request.summary = stripFences(out.request.summary);
   if (out.request.details) out.request.details = stripFences(out.request.details);
 
+  // 🔹 Görüşme bilgilerini normalize et (mode + date + time)
+  // Model veya frontend farklı alan isimleri kullanırsa hepsini toparlayalım.
+  const pm = out.preferred_meeting || out.meeting || {};
+
+  let mode = clean(pm.mode || out.meeting_mode || "");
+  // Sık kullanılan varyasyonları sadeleştirelim (opsiyonel ama okunaklı olur)
+  const modeLower = mode.toLowerCase();
+  if (/online|çevrim içi|cevrim ici/.test(modeLower)) {
+    mode = "Online Görüşme";
+  } else if (/yüz yüze|yuz yuze|ofis/.test(modeLower)) {
+    mode = "Yüz Yüze Görüşme";
+  }
+
+  const rawDate =
+    clean(
+      pm.date ||
+      out.meeting_date ||
+      pm.datetime ||
+      out.meeting_datetime ||
+      ""
+    );
+
+  const rawTime =
+    clean(
+      pm.time ||
+      out.meeting_time ||
+      ""
+    );
+
+  // Varsa normalize etmeye çalış (TR tarih/saat helper’larını kullanıyoruz)
+  const normalizedDate = normalizeDateTR(rawDate) || rawDate || "";
+  const normalizedTime = normalizeTimeTR(rawTime) || rawTime || "";
+
+  out.preferred_meeting = out.preferred_meeting || {};
+  if (mode) out.preferred_meeting.mode = mode;
+  if (normalizedDate) out.preferred_meeting.date = normalizedDate;
+  if (normalizedTime) out.preferred_meeting.time = normalizedTime;
+
+
+
+  // --- Mailde sohbet/handoff bloğu görünmesin diye: details temizliği ---
+  if (out?.request?.details) {
+    out.request.details = String(out.request.details)
+      .replace(/```[\s\S]*?```/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    if (out.request.details.length > 900) {
+      out.request.details = out.request.details.slice(0, 900) + "…";
+    }
+  }
+
+  if (out?.request?.summary && /Bilgilerinizi aldım/i.test(out.request.summary)) {
+    out.request.summary = "Randevu talebi";
+  }
+
+  const stripFenced2 = (s = "") => String(s).replace(/```[\s\S]*?```/g, "").trim();
+  if (out?.request?.summary) out.request.summary = stripFenced2(out.request.summary);
+  if (out?.request?.details) out.request.details = stripFenced2(out.request.details);
+
   return out;
 }
-
 
 function sanitizeHandoffPayload(payload, kind, brandCfg) {
   const out = JSON.parse(JSON.stringify(payload || {})); // deep copy
