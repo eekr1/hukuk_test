@@ -1185,16 +1185,21 @@ async function ensureTables() {
         last_message_at TIMESTAMPTZ DEFAULT now()
       );
 
-      CREATE TABLE IF NOT EXISTS messages (
-        id SERIAL PRIMARY KEY,
-        conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
-        role TEXT NOT NULL,
-        text TEXT,
-        raw_text TEXT,
-        handoff_kind TEXT,
-        handoff_payload JSONB,
-        created_at TIMESTAMPTZ DEFAULT now()
-      );
+     CREATE TABLE IF NOT EXISTS messages (
+  id SERIAL PRIMARY KEY,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  text TEXT,
+  raw_text TEXT,
+  handoff_kind TEXT,
+  handoff_payload JSONB,
+  meta JSONB,
+  meeting_mode TEXT,
+  meeting_date TEXT,
+  meeting_time TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
     `);
 
     // 2) Kolonları garanti et (idempotent migration)
@@ -1205,7 +1210,10 @@ async function ensureTables() {
         ADD COLUMN IF NOT EXISTS source JSONB;
 
       ALTER TABLE messages
-        ADD COLUMN IF NOT EXISTS meta JSONB;
+        ADD COLUMN IF NOT EXISTS meta JSONB,
+        ADD COLUMN IF NOT EXISTS meeting_mode TEXT,
+        ADD COLUMN IF NOT EXISTS meeting_date TEXT,
+        ADD COLUMN IF NOT EXISTS meeting_time TEXT;
     `);
 
     // 3) Index’leri garanti et (kolonlar artık kesin var)
@@ -1272,13 +1280,19 @@ async function logChatMessage({
 
       const conversationId = convRes.rows[0].id;
 
+      // Extract meeting details if available
+      const pm = handoff?.payload?.preferred_meeting || {};
+      const meetingMode = pm.mode || null;
+      const meetingDate = pm.date || null;
+      const meetingTime = pm.time || null;
+
       // 2) Mesajı ekle
       await client.query(
         `
   INSERT INTO messages
-    (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, meta, created_at)
+    (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, meta, meeting_mode, meeting_date, meeting_time, created_at)
   VALUES
-    ($1, $2, $3, $4, $5, $6, $7, now())
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
   `,
         [
           conversationId,
@@ -1288,6 +1302,9 @@ async function logChatMessage({
           handoff ? handoff.kind || null : null,
           handoff ? JSON.stringify(handoff.payload || null) : null,
           meta ? JSON.stringify(meta) : null,
+          meetingMode,
+          meetingDate,
+          meetingTime
         ]
       );
 
@@ -1619,7 +1636,11 @@ app.post("/api/chat/stream", chatLimiter, async (req, res) => {
               sessionId: sessionId || null,
               source: source || null,
               meta: meta || null,
-              payload: clean
+              payload: clean,
+              // Flattened meeting fields for easy Sheets usage
+              meeting_mode: clean?.preferred_meeting?.mode || "",
+              meeting_date: clean?.preferred_meeting?.date || "",
+              meeting_time: clean?.preferred_meeting?.time || ""
             });
 
             console.log("[handoff][stream] SENT");
@@ -1865,7 +1886,11 @@ app.post("/api/chat/message", chatLimiter, async (req, res) => {
               sessionId: sessionId || null,
               source: source || null,
               meta: meta || null,
-              payload: clean
+              payload: clean,
+              // Flattened meeting fields for easy Sheets usage
+              meeting_mode: clean?.preferred_meeting?.mode || "",
+              meeting_date: clean?.preferred_meeting?.date || "",
+              meeting_time: clean?.preferred_meeting?.time || ""
             });
 
             console.log("[handoff][poll] SENT", { kind: handoff.kind });
