@@ -62,12 +62,51 @@ router.get("/check", requireAdmin, (req, res) => {
 
 /* ==================== Data Endpoints ==================== */
 
-// GET /api/admin/handoffs
+// GET /api/admin/stats
+router.get("/stats", requireAdmin, async (req, res) => {
+    try {
+        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
+        // 1) Bugünkü Yeni Talepler
+        const resToday = await pool.query(`
+            SELECT COUNT(*) as count FROM messages 
+            WHERE handoff_payload IS NOT NULL 
+            AND created_at::date = $1
+        `, [today]);
+
+        // 2) Bekleyen "NEW" Sayısı
+        const resPending = await pool.query(`
+            SELECT COUNT(*) as count FROM messages 
+            WHERE handoff_payload IS NOT NULL 
+            AND (admin_status = 'NEW' OR admin_status IS NULL)
+        `);
+
+        // 3) Son 7 Gün Toplam
+        const resWeekly = await pool.query(`
+            SELECT COUNT(*) as count FROM messages 
+            WHERE handoff_payload IS NOT NULL 
+            AND created_at > now() - interval '7 days'
+        `);
+
+        res.json({
+            ok: true,
+            stats: {
+                today: parseInt(resToday.rows[0].count),
+                pending: parseInt(resPending.rows[0].count),
+                weekly: parseInt(resWeekly.rows[0].count)
+            }
+        });
+    } catch (e) {
+        console.error("[admin] stats error:", e);
+        res.status(500).json({ error: "Stats error" });
+    }
+});
+
+// GET /api/admin/handoffs (Filtreli)
 router.get("/handoffs", requireAdmin, async (req, res) => {
     try {
-        // Son 100 handoff mesajını çek
-        // conversations tablosuyla join yaparak visitor bilgilerini de alabiliriz (opsiyonel ama iyi olur)
-        const result = await pool.query(`
+        const { status, days } = req.query;
+        let query = `
             SELECT 
                 m.id,
                 m.created_at,
@@ -75,25 +114,50 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
                 m.meeting_mode,
                 m.meeting_date,
                 m.meeting_time,
+                m.admin_status,
+                m.admin_notes,
                 c.thread_id,
                 c.visitor_id,
                 c.session_id
             FROM messages m
             LEFT JOIN conversations c ON m.conversation_id = c.id
             WHERE m.handoff_payload IS NOT NULL
-            ORDER BY m.created_at DESC
-            LIMIT 100
-        `);
+        `;
 
-        // Frontend için veriyi temizle/hazırla
+        const params = [];
+        let paramIdx = 1;
+
+        // Filtre: Durum
+        if (status && status !== 'ALL') {
+            // "NEW" seçilirse NULL olanları da kapsasın mı? Genelde evet.
+            if (status === 'NEW') {
+                query += ` AND (m.admin_status = 'NEW' OR m.admin_status IS NULL)`;
+            } else {
+                query += ` AND m.admin_status = $${paramIdx++}`;
+                params.push(status);
+            }
+        }
+
+        // Filtre: Tarih (Son X gün)
+        if (days) {
+            query += ` AND m.created_at > now() - interval '${parseInt(days)} days'`;
+        }
+
+        query += ` ORDER BY m.created_at DESC LIMIT 200`;
+
+        const result = await pool.query(query, params);
+
         const rows = result.rows.map(r => {
-            // Payload içindeki detayları düzleştir
             const p = r.handoff_payload || {};
             return {
                 id: r.id,
                 date: r.created_at,
                 threadId: r.thread_id,
                 visitorId: r.visitor_id,
+
+                // Admin Fields
+                status: r.admin_status || "NEW",
+                notes: r.admin_notes || "",
 
                 // Contact
                 name: p.contact?.name || "İsimsiz",
@@ -105,7 +169,7 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
                 summary: p.request?.summary || p.summary || "",
                 details: p.request?.details || p.details || "",
 
-                // Meeting (DB kolonlarından veya payload'dan)
+                // Meeting
                 meetingMode: r.meeting_mode || p.preferred_meeting?.mode || "",
                 meetingDate: r.meeting_date || p.preferred_meeting?.date || "",
                 meetingTime: r.meeting_time || p.preferred_meeting?.time || ""
@@ -116,6 +180,44 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
     } catch (e) {
         console.error("[admin] handoffs error:", e);
         res.status(500).json({ error: "Database error" });
+    }
+});
+
+// PATCH /api/admin/handoffs/:id (Durum/Not Güncelleme)
+router.patch("/handoffs/:id", requireAdmin, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { status, notes } = req.body;
+
+        // Dinamik güncelleme query'si
+        const updates = [];
+        const params = [id];
+        let idx = 2;
+
+        if (status !== undefined) {
+            updates.push(`admin_status = $${idx++}`);
+            params.push(status);
+        }
+        if (notes !== undefined) {
+            updates.push(`admin_notes = $${idx++}`);
+            params.push(notes);
+        }
+
+        if (updates.length === 0) {
+            return res.json({ ok: true, msg: "No changes" });
+        }
+
+        const query = `
+            UPDATE messages 
+            SET ${updates.join(", ")}
+            WHERE id = $1
+        `;
+
+        await pool.query(query, params);
+        res.json({ ok: true });
+    } catch (e) {
+        console.error("[admin] update error:", e);
+        res.status(500).json({ error: "Update error" });
     }
 });
 
