@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="tr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YMH Hukuk - Admin Paneli</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#CEA45E', 600: '#B08846' }, // Gold-ish
+                        dark: { 900: '#111827', 800: '#1F2937', 700: '#374151' }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Vue 3 -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    
+    <!-- Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
+
+    <style>
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans antialiased selection:bg-brand-500 selection:text-white">
+
+<div id="app" v-cloak class="min-h-screen flex flex-col">
+    
+    <!-- LOADING / CHECKING STATE -->
+    <div v-if="loading" class="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-500"></div>
+    </div>
+
+    <!-- LOGIN SCREEN -->
+    <div v-if="!loading && !isLoggedIn" class="flex-1 flex items-center justify-center p-4">
+        <div class="w-full max-w-md bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700">
+            <div class="text-center mb-8">
+                <i class="ri-scales-3-line text-5xl text-brand-500 mb-4 inline-block"></i>
+                <h1 class="text-2xl font-bold text-white">YMH Hukuk Admin</h1>
+                <p class="text-gray-400 text-sm mt-2">Yönetim paneline giriş yapın</p>
+            </div>
+
+            <form @submit.prevent="login" class="space-y-6">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Yönetici Şifresi</label>
+                    <div class="relative">
+                        <input 
+                            v-model="password" 
+                            type="password" 
+                            class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-3 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
+                            placeholder="••••••••"
+                            required
+                        >
+                        <i class="ri-lock-line absolute right-4 top-3.5 text-gray-500"></i>
+                    </div>
+                </div>
+
+                <div v-if="error" class="bg-red-900/50 border border-red-800 text-red-200 px-4 py-3 rounded-lg text-sm flex items-center gap-2">
+                    <i class="ri-error-warning-line"></i> {{ error }}
+                </div>
+
+                <button 
+                    type="submit" 
+                    class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 rounded-lg transition-all duration-200 transform hover:scale-[1.02] shadow-lg shadow-brand-500/20"
+                    :disabled="submitting"
+                >
+                    <span v-if="submitting">Giriş Yapılıyor...</span>
+                    <span v-else>Giriş Yap</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div v-if="!loading && isLoggedIn" class="flex-1 flex flex-col h-screen overflow-hidden">
+        
+        <!-- Navbar -->
+        <header class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-6 flex-shrink-0 z-20">
+            <div class="flex items-center gap-3">
+                <i class="ri-briefcase-4-line text-brand-500 text-2xl"></i>
+                <span class="font-bold text-lg tracking-wide">YMH Hukuk <span class="text-gray-500 text-sm font-normal ml-1">v.Admin</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <span class="text-sm text-gray-400 hidden sm:inline">Hoş geldin, Admin</span>
+                <button @click="logout" class="bg-gray-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2">
+                    <i class="ri-logout-box-r-line"></i> Çıkış
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-auto bg-gray-900 p-6">
+            
+            <div class="max-w-7xl mx-auto space-y-6">
+                
+                <!-- Stats / Header -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-white">Gelen Talepler (Handoffs)</h2>
+                        <p class="text-gray-400 text-sm mt-1">Son 100 müşteri talebi listeleniyor.</p>
+                    </div>
+                    <button @click="fetchData" class="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg border border-gray-700 transition-colors flex items-center gap-2 w-max">
+                        <i class="ri-refresh-line" :class="{ 'animate-spin': loadingData }"></i> Yenile
+                    </button>
+                </div>
+
+                <!-- Table Container -->
+                <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-xl ring-1 ring-white/5">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-sm text-gray-300">
+                            <thead class="bg-gray-900/50 text-xs uppercase font-medium text-gray-400 border-b border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 w-40">Tarih</th>
+                                    <th class="px-6 py-4 w-48">Kişi / İletişim</th>
+                                    <th class="px-6 py-4 w-32">Kategori</th>
+                                    <th class="px-6 py-4 w-40">Randevu</th>
+                                    <th class="px-6 py-4">Özet & Detay</th>
+                                    <th class="px-6 py-4 w-20">Link</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-700">
+                                <tr v-if="!handoffs.length && !loadingData" class="group hover:bg-gray-800/80 transition-colors">
+                                    <td colspan="6" class="px-6 py-12 text-center text-gray-500 italic">
+                                        Henüz hiç talep bulunmuyor.
+                                    </td>
+                                </tr>
+                                
+                                <tr v-for="item in handoffs" :key="item.id" class="group hover:bg-gray-700/30 transition-colors" :class="{ 'animate-pulse': loadingData }">
+                                    
+                                    <!-- Date -->
+                                    <td class="px-6 py-4 align-top whitespace-nowrap">
+                                        <div class="text-white font-medium">{{ formatDate(item.date) }}</div>
+                                        <div class="text-gray-500 text-xs mt-0.5">{{ formatTime(item.date) }}</div>
+                                    </td>
+
+                                    <!-- Contact -->
+                                    <td class="px-6 py-4 align-top">
+                                        <div class="text-white font-medium">{{ item.name }}</div>
+                                        <div class="text-brand-500 text-xs mt-1" v-if="item.phone">{{ item.phone }}</div>
+                                        <div class="text-gray-500 text-xs" v-if="item.email">{{ item.email }}</div>
+                                    </td>
+
+                                    <!-- Category -->
+                                    <td class="px-6 py-4 align-top">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-700 text-gray-300 border border-gray-600">
+                                            {{ item.category }}
+                                        </span>
+                                    </td>
+
+                                    <!-- Meeting -->
+                                    <td class="px-6 py-4 align-top">
+                                        <div v-if="item.meetingDate || item.meetingMode">
+                                            <div class="text-gray-200 text-xs mb-1" v-if="item.meetingMode">
+                                                <i class="ri-video-chat-line align-bottom text-brand-500" v-if="item.meetingMode.toLowerCase().includes('online')"></i>
+                                                <i class="ri-user-location-line align-bottom text-brand-500" v-else></i>
+                                                {{ item.meetingMode }}
+                                            </div>
+                                            <div class="text-white text-sm font-medium" v-if="item.meetingDate">
+                                                {{ item.meetingDate }} 
+                                                <span class="text-gray-400 font-normal" v-if="item.meetingTime">{{ item.meetingTime }}</span>
+                                            </div>
+                                        </div>
+                                        <span v-else class="text-gray-600 text-xs italic">-</span>
+                                    </td>
+
+                                    <!-- Summary/Details -->
+                                    <td class="px-6 py-4 align-top">
+                                        <div class="text-white mb-1 line-clamp-2 font-medium" :title="item.summary">{{ item.summary }}</div>
+                                        <div class="text-gray-400 text-xs line-clamp-2" :title="item.details">{{ item.details }}</div>
+                                    </td>
+
+                                    <!-- Actions -->
+                                    <td class="px-6 py-4 align-top text-right">
+                                        <a href="#" class="text-gray-500 hover:text-white transition-colors" title="Detay (Yakında)">
+                                            <i class="ri-arrow-right-circle-line text-xl"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+        setup() {
+            const loading = ref(true);
+            const isLoggedIn = ref(false);
+            const password = ref("");
+            const handoffs = ref([]);
+            const error = ref(null);
+            const submitting = ref(false);
+            const loadingData = ref(false);
+
+            // Auth Check
+            const checkAuth = async () => {
+                loading.value = true;
+                try {
+                    const res = await fetch("/api/admin/check");
+                    const data = await res.json();
+                    if (data.ok) {
+                        isLoggedIn.value = true;
+                        fetchData();
+                    } else {
+                        isLoggedIn.value = false;
+                    }
+                } catch (e) {
+                    isLoggedIn.value = false;
+                } finally {
+                    loading.value = false;
+                }
+            };
+
+            // Login
+            const login = async () => {
+                submitting.value = true;
+                error.value = null;
+                try {
+                    const res = await fetch("/api/admin/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ password: password.value })
+                    });
+                    const data = await res.json();
+                    if (data.ok) {
+                        isLoggedIn.value = true;
+                        password.value = "";
+                        fetchData();
+                    } else {
+                        error.value = data.error || "Giriş başarısız";
+                    }
+                } catch (e) {
+                    error.value = "Bir hata oluştu";
+                } finally {
+                    submitting.value = false;
+                }
+            };
+
+            // Logout
+            const logout = async () => {
+                await fetch("/api/admin/logout", { method: "POST" });
+                isLoggedIn.value = false;
+                handoffs.value = [];
+            };
+
+            // Fetch Data
+            const fetchData = async () => {
+                loadingData.value = true;
+                try {
+                    const res = await fetch("/api/admin/handoffs");
+                    const data = await res.json();
+                    if (data.ok) {
+                        handoffs.value = data.data;
+                    }
+                } catch (e) {
+                    console.error("Veri çekilemedi", e);
+                } finally {
+                    loadingData.value = false;
+                }
+            };
+
+            // Formatters
+            const formatDate = (isoStr) => {
+                if (!isoStr) return "";
+                const d = new Date(isoStr);
+                return d.toLocaleDateString("tr-TR", { day: 'numeric', month: 'long' });
+            };
+            
+            const formatTime = (isoStr) => {
+                if (!isoStr) return "";
+                const d = new Date(isoStr);
+                return d.toLocaleTimeString("tr-TR", { hour: '2-digit', minute: '2-digit' });
+            };
+
+            onMounted(() => {
+                checkAuth();
+            });
+
+            return {
+                loading, isLoggedIn, password, handoffs, error, submitting, loadingData,
+                login, logout, fetchData, formatDate, formatTime
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
