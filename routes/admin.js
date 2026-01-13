@@ -88,12 +88,26 @@ router.get("/stats", requireAdmin, async (req, res) => {
             AND created_at > now() - interval '7 days'
         `);
 
+        // 4) Kategori Analizi (Son 7 Gün)
+        const resCats = await pool.query(`
+            SELECT 
+                COALESCE(handoff_payload->'matter'->>'category', 'diger') as category,
+                COUNT(*) as count
+            FROM messages
+            WHERE handoff_payload IS NOT NULL
+            AND created_at > now() - interval '7 days'
+            GROUP BY 1
+            ORDER BY 2 DESC
+            LIMIT 5
+        `);
+
         res.json({
             ok: true,
             stats: {
                 today: parseInt(resToday.rows[0].count),
                 pending: parseInt(resPending.rows[0].count),
-                weekly: parseInt(resWeekly.rows[0].count)
+                weekly: parseInt(resWeekly.rows[0].count),
+                categories: resCats.rows
             }
         });
     } catch (e) {
@@ -102,10 +116,11 @@ router.get("/stats", requireAdmin, async (req, res) => {
     }
 });
 
-// GET /api/admin/handoffs (Filtreli)
+// GET /api/admin/handoffs (Filtreli + Arama)
 router.get("/handoffs", requireAdmin, async (req, res) => {
     try {
-        const { status, days } = req.query;
+        const { status, days, q, category } = req.query;
+
         let query = `
             SELECT 
                 m.id,
@@ -129,7 +144,6 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
 
         // Filtre: Durum
         if (status && status !== 'ALL') {
-            // "NEW" seçilirse NULL olanları da kapsasın mı? Genelde evet.
             if (status === 'NEW') {
                 query += ` AND (m.admin_status = 'NEW' OR m.admin_status IS NULL)`;
             } else {
@@ -141,6 +155,25 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
         // Filtre: Tarih (Son X gün)
         if (days) {
             query += ` AND m.created_at > now() - interval '${parseInt(days)} days'`;
+        }
+
+        // Filtre: Kategori
+        if (category && category !== 'ALL') {
+            // JSONB sorgusu: payload->matter->category
+            query += ` AND (m.handoff_payload->'matter'->>'category')::text = $${paramIdx++}`;
+            params.push(category);
+        }
+
+        // Arama (İsim veya Telefon veya Notlar)
+        if (q) {
+            const likeQ = `%${q}%`;
+            query += ` AND (
+                (m.handoff_payload->'contact'->>'name') ILIKE $${paramIdx} OR
+                (m.handoff_payload->'contact'->>'phone') ILIKE $${paramIdx} OR
+                m.admin_notes ILIKE $${paramIdx}
+            )`;
+            params.push(likeQ);
+            paramIdx++;
         }
 
         query += ` ORDER BY m.created_at DESC LIMIT 200`;
