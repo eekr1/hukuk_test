@@ -15,7 +15,8 @@
                 extend: {
                     colors: {
                         brand: { 500: '#CEA45E', 600: '#B08846' }, // Gold-ish
-                        dark: { 900: '#111827', 800: '#1F2937', 700: '#374151', 600: '#4B5563' }
+                        dark: { 900: '#111827', 800: '#1F2937', 700: '#374151', 600: '#4B5563' },
+                        chat: { user: '#005c4b', bot: '#202c33', bg: '#0b141a' } // WhatsApp Dark Colors
                     }
                 }
             }
@@ -59,6 +60,12 @@
         .fade-enter-from,
         .fade-leave-to {
             opacity: 0;
+        }
+
+        /* Chat Background Pattern */
+        .chat-bg {
+            background-color: #0b141a;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.03' fill-rule='evenodd'/%3E%3C/svg%3E");
         }
     </style>
 </head>
@@ -112,7 +119,7 @@
                 <div class="flex items-center gap-3">
                     <i class="ri-briefcase-4-line text-brand-500 text-2xl"></i>
                     <span class="font-bold text-lg tracking-wide">YMH Hukuk <span
-                            class="text-gray-500 text-sm font-normal ml-1">CRM v3.0</span></span>
+                            class="text-gray-500 text-sm font-normal ml-1">CRM v4.0</span></span>
                 </div>
                 <div class="flex items-center gap-4">
                     <span class="text-sm text-gray-400 hidden sm:inline">Admin</span>
@@ -127,7 +134,7 @@
             <main class="flex-1 overflow-auto bg-gray-900 p-6 scroll-smooth">
                 <div class="max-w-7xl mx-auto space-y-6">
 
-                    <!-- 1. İstatistik Kartları -->
+                    <!-- 1. Stats -->
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <!-- Today -->
                         <div
@@ -192,7 +199,6 @@
                         </div>
 
                         <div class="flex flex-wrap items-center gap-3 w-full justify-end">
-
                             <!-- Quick Filter: Today's NEW -->
                             <button @click="toggleTodayNew"
                                 class="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2"
@@ -258,7 +264,6 @@
                     <div
                         class="bg-gray-800 rounded-xl border border-gray-700 overflow-visible shadow-xl relative min-h-[400px]">
                         <div class="overflow-visible">
-                            <!-- overflow-visible here allows dropdowns to pop out if needed, but we manage scroll on body or specific container -->
                             <table class="w-full text-left text-sm text-gray-300">
                                 <thead
                                     class="bg-gray-900/50 text-xs uppercase font-medium text-gray-400 border-b border-gray-700 sticky top-0 z-0">
@@ -268,7 +273,7 @@
                                         <th class="px-6 py-4 w-56">İletişim</th>
                                         <th class="px-6 py-4 w-32">Kategori</th>
                                         <th class="px-6 py-4">Detaylar</th>
-                                        <th class="px-6 py-4 w-10"></th>
+                                        <th class="px-6 py-4 w-20 text-right">Geçmiş</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-700">
@@ -298,7 +303,7 @@
                                                     <i class="ri-arrow-down-s-fill opacity-50"></i>
                                                 </button>
 
-                                                <!-- Smart Dropdown: Shows ABOVE if it's one of the last items -->
+                                                <!-- Smart Dropdown -->
                                                 <div v-if="activeMenuId === item.id"
                                                     class="absolute z-50 w-32 rounded-md shadow-2xl bg-gray-800 ring-1 ring-black ring-opacity-5 border border-gray-600 overflow-hidden"
                                                     :class="index > handoffs.length - 4 ? 'bottom-full mb-1' : 'top-full mt-1 left-0'">
@@ -312,7 +317,6 @@
                                                         </a>
                                                     </div>
                                                 </div>
-                                                <!-- Click outside handler (Overlay) -->
                                                 <div v-if="activeMenuId === item.id" @click.stop="activeMenuId = null"
                                                     class="fixed inset-0 z-40 cursor-default"></div>
                                             </div>
@@ -332,7 +336,6 @@
                                         <!-- Contact (Shortcuts) -->
                                         <td class="px-6 py-4 align-top">
                                             <div class="text-white font-medium mb-1">{{ item.name }}</div>
-
                                             <div class="flex items-center gap-2" v-if="item.phone">
                                                 <!-- Phone Link -->
                                                 <a :href="'tel:' + cleanPhone(item.phone)"
@@ -359,8 +362,7 @@
                                                 class="inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-700 text-gray-300 border border-gray-600 tracking-wider">
                                                 {{ item.category }}
                                             </span>
-
-                                            <!-- Meeting Info Badge -->
+                                            <!-- Meeting Info -->
                                             <div v-if="item.meetingDate || item.meetingMode"
                                                 class="mt-2 bg-purple-900/30 border border-purple-700/50 rounded p-1.5 inline-block min-w-full">
                                                 <div
@@ -381,7 +383,6 @@
                                         <td class="px-6 py-4 align-top w-1/3">
                                             <div class="text-white text-sm mb-1 line-clamp-2" :title="item.summary">{{
                                                 item.summary }}</div>
-
                                             <!-- Note Section -->
                                             <div class="mt-2 pt-2 border-t border-gray-700/50 flex items-start gap-2 cursor-pointer group/note transition-opacity opacity-70 hover:opacity-100"
                                                 @click="openNoteModal(item)">
@@ -399,8 +400,13 @@
                                             </div>
                                         </td>
 
+                                        <!-- Chat Button (NEW) -->
                                         <td class="px-6 py-4 align-top text-right">
-                                            <!-- Future Actions -->
+                                            <button @click="openChat(item)"
+                                                class="bg-gray-800 border border-gray-600 hover:bg-gray-700 text-blue-400 p-2 rounded-full transition-colors relative group/chat"
+                                                title="Sohbet Geçmişi">
+                                                <i class="ri-chat-3-line text-lg"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -444,10 +450,77 @@
             </div>
         </div>
 
+
+        <!-- CHAT MODAL (NEW) -->
+        <div v-if="showChatModal"
+            class="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4">
+            <div
+                class="bg-chat-bg w-full max-w-2xl h-[80vh] flex flex-col rounded-xl overflow-hidden shadow-2xl relative border border-gray-700 transform transition-all">
+
+                <!-- Header -->
+                <div class="bg-gray-800 px-4 py-3 flex items-center justify-between border-b border-gray-700 z-10">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-700 flex items-center justify-center text-gray-400">
+                            <i class="ri-user-3-fill text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-bold text-sm">{{ currentItem?.name || 'Ziyaretçi' }}</h3>
+                            <p class="text-xs text-gray-400 font-mono">{{ currentItem?.threadId?.substring(0,8) }}...
+                            </p>
+                        </div>
+                    </div>
+                    <button @click="closeChatModal"
+                        class="bg-gray-700 hover:bg-gray-600 w-8 h-8 rounded-full flex items-center justify-center text-gray-300 transition-colors">
+                        <i class="ri-close-line"></i>
+                    </button>
+                </div>
+
+                <!-- Messages Area -->
+                <div class="flex-1 overflow-y-auto p-4 space-y-3 bg-[#0b141a] chat-bg scroll-smooth"
+                    ref="chatContainer">
+
+                    <div v-if="chatLoading" class="flex justify-center py-10">
+                        <div class="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-brand-500"></div>
+                    </div>
+
+                    <div v-else-if="!chatMessages.length" class="text-center py-10 text-gray-500 text-sm">
+                        Mesaj geçmişi bulunamadı.
+                    </div>
+
+                    <div v-for="(msg, idx) in chatMessages" :key="idx" class="flex flex-col"
+                        :class="msg.role === 'user' ? 'items-end' : 'items-start'">
+
+                        <div class="max-w-[85%] sm:max-w-[75%] rounded-lg px-3 py-1.5 shadow-sm text-sm relative leading-snug break-words"
+                            :class="msg.role === 'user' ? 'bg-[#005c4b] text-[#e9edef] rounded-tr-none' : 'bg-[#202c33] text-[#e9edef] rounded-tl-none'">
+
+                            <!-- Text -->
+                            <div class="whitespace-pre-wrap">{{ msg.text }}</div>
+
+                            <!-- Metadata (Time) -->
+                            <div class="text-[10px] text-right mt-1 opacity-60 flex gap-1 justify-end items-center">
+                                {{ formatTime(msg.created_at) }}
+                                <i v-if="msg.role === 'user'" class="ri-check-double-line text-blue-400"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fake Input Area (Just for looks) -->
+                <div
+                    class="bg-gray-800 px-4 py-3 flex items-center gap-2 border-t border-gray-700 opacity-80 cursor-not-allowed">
+                    <i class="ri-emoji-sticker-line text-gray-400 text-xl"></i>
+                    <i class="ri-add-line text-gray-400 text-xl"></i>
+                    <div class="flex-1 bg-gray-700 rounded-lg px-4 py-2 text-sm text-gray-500">Bu sohbet sona erdi.
+                    </div>
+                    <i class="ri-mic-line text-gray-400 text-xl"></i>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
-        const { createApp, ref, onMounted } = Vue;
+        const { createApp, ref, onMounted, nextTick } = Vue;
 
         createApp({
             setup() {
@@ -478,6 +551,12 @@
                 const showNoteModal = ref(false);
                 const currentItem = ref(null);
                 const tempNote = ref("");
+
+                // Chat Modal
+                const showChatModal = ref(false);
+                const chatMessages = ref([]);
+                const chatLoading = ref(false);
+                const chatContainer = ref(null);
 
                 // Functions
                 const checkAuth = async () => {
@@ -540,7 +619,6 @@
                         const params = new URLSearchParams();
 
                         if (filterTodayNew.value) {
-                            // Shortcut for Today + NEW
                             params.append("status", "NEW");
                             params.append("days", "1");
                         } else {
@@ -560,32 +638,9 @@
                     loadingData.value = false;
                 };
 
-                const toggleTodayNew = () => {
-                    filterTodayNew.value = !filterTodayNew.value;
-                    if (filterTodayNew.value) {
-                        filterStatus.value = "NEW";
-                        filterDays.value = "1";
-                        filterCategory.value = "ALL";
-                    } else {
-                        filterStatus.value = "ALL";
-                        filterDays.value = "";
-                    }
-                    fetchData();
-                };
-
-                // Debounce Text Search
-                let timeout = null;
-                const debounceSearch = () => {
-                    clearTimeout(timeout);
-                    timeout = setTimeout(() => {
-                        debouncedSearch.value = searchQuery.value;
-                        fetchData();
-                    }, 400); // 400ms delay
-                };
-
                 // Updates
                 const updateStatus = async (item, newStatus) => {
-                    activeMenuId.value = null; // Close menu
+                    activeMenuId.value = null;
                     if (item.status === newStatus) return;
 
                     const oldStatus = item.status;
@@ -604,7 +659,7 @@
                     }
                 };
 
-                // Note Handling
+                // Note Logic
                 const openNoteModal = (item) => {
                     currentItem.value = item;
                     tempNote.value = item.notes || "";
@@ -613,7 +668,7 @@
 
                 const closeNoteModal = () => {
                     showNoteModal.value = false;
-                    currentItem.value = null;
+                    if (!showChatModal.value) currentItem.value = null; // Don't clear if chat is open
                     tempNote.value = "";
                 };
 
@@ -637,15 +692,65 @@
                     }
                 };
 
-                // Logic Helpers
+                // Chat Logic
+                const openChat = async (item) => {
+                    currentItem.value = item;
+                    showChatModal.value = true;
+                    chatLoading.value = true;
+                    chatMessages.value = [];
+
+                    try {
+                        const res = await fetch(`/api/admin/conversations/${item.threadId}`);
+                        const data = await res.json();
+                        if (data.ok) {
+                            chatMessages.value = data.messages;
+                            await nextTick();
+                            scrollToBottom();
+                        }
+                    } catch (e) {
+                        console.error("Chat load error", e);
+                    }
+                    chatLoading.value = false;
+                };
+
+                const closeChatModal = () => {
+                    showChatModal.value = false;
+                    currentItem.value = null;
+                    chatMessages.value = [];
+                };
+
+                const scrollToBottom = () => {
+                    if (chatContainer.value) {
+                        chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+                    }
+                };
+
+                // Helpers
+                const toggleTodayNew = () => {
+                    filterTodayNew.value = !filterTodayNew.value;
+                    if (filterTodayNew.value) {
+                        filterStatus.value = "NEW";
+                        filterDays.value = "1";
+                        filterCategory.value = "ALL";
+                    } else {
+                        filterStatus.value = "ALL";
+                        filterDays.value = "";
+                    }
+                    fetchData();
+                };
+
+                let timeout = null;
+                const debounceSearch = () => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        debouncedSearch.value = searchQuery.value;
+                        fetchData();
+                    }, 400);
+                };
+
                 const openStatusMenu = (item) => {
                     activeMenuId.value = (activeMenuId.value === item.id) ? null : item.id;
                 };
-
-                // Close on click outside (document level handled by Vue template overlay mostly, but good to have)
-                document.addEventListener("click", (e) => {
-                    // simple global listener backup if needed
-                });
 
                 const getStatusColor = (status) => {
                     switch (status) {
@@ -660,7 +765,6 @@
 
                 const isStaleNew = (item) => {
                     if (item.status !== 'NEW') return false;
-                    // If create date is older than 24 hours
                     const date = new Date(item.date);
                     const now = new Date();
                     const diffMs = now - date;
@@ -675,7 +779,7 @@
                     if (!dateStr) return "";
                     const date = new Date(dateStr);
                     const now = new Date();
-                    const diff = (now - date) / 1000; // seconds
+                    const diff = (now - date) / 1000;
 
                     if (diff < 60) return "Az önce";
                     if (diff < 3600) return Math.floor(diff / 60) + " dk önce";
@@ -684,12 +788,21 @@
                     return date.toLocaleDateString("tr-TR", { day: 'numeric', month: 'short' });
                 };
 
-                const formatFullDate = (s) => s ? new Date(s).toLocaleString("tr-TR") : "";
-                const formatTime = (s) => s ? new Date(s).toLocaleTimeString("tr-TR", { hour: '2-digit', minute: '2-digit' }) : "";
+                const formatFullDate = (s) => {
+                    if (!s) return "";
+                    try {
+                        return new Date(s).toLocaleString("tr-TR");
+                    } catch (e) { return ""; }
+                };
+
+                const formatTime = (s) => {
+                    if (!s) return "";
+                    try {
+                        return new Date(s).toLocaleTimeString("tr-TR", { hour: '2-digit', minute: '2-digit' });
+                    } catch (e) { return ""; }
+                };
 
                 onMounted(() => {
-                    // If user accidentally clicks inside the list but not on a button, close menu
-                    // document.body.addEventListener('click', () => activeMenuId.value = null); // handled by overlays
                     checkAuth();
                 });
 
@@ -699,9 +812,11 @@
                     filterStatus, filterDays, filterCategory, filterTodayNew, searchQuery, debounceSearch,
                     activeMenuId, statusOptions,
                     showNoteModal, tempNote, currentItem,
+                    showChatModal, chatMessages, chatLoading, chatContainer, // Chat state
                     login, logout, fetchData, fetchStats, toggleTodayNew,
                     updateStatus, openStatusMenu, getStatusColor,
                     openNoteModal, closeNoteModal, saveNote,
+                    openChat, closeChatModal, // Chat Actions
                     cleanPhone, timeAgo, formatFullDate, formatTime, isStaleNew
                 };
             }
