@@ -254,4 +254,29 @@ router.patch("/handoffs/:id", requireAdmin, async (req, res) => {
     }
 });
 
+
+// GET /api/admin/conversations/:threadId
+router.get("/conversations/:threadId", requireAdmin, async (req, res) => {
+    try {
+        const { threadId } = req.params;
+
+        // Thread ID'ye göre mesajları çek
+        const result = await pool.query(`
+            SELECT 
+                m.role,
+                m.text,
+                m.created_at
+            FROM messages m
+            JOIN conversations c ON m.conversation_id = c.id
+            WHERE c.thread_id = $1
+            ORDER BY m.created_at ASC
+        `, [threadId]);
+
+        res.json({ ok: true, messages: result.rows });
+    } catch (e) {
+        console.error("[admin] conversation error:", e);
+        res.status(500).json({ error: "Conversation error" });
+    }
+});
+
 export default router;
