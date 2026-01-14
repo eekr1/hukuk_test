@@ -2,520 +2,484 @@
 <html lang="tr">
 <head>
   <meta charset="utf-8" />
-  <title>Hukuk Bürosu Asistan • Canlı Destek</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>STEIN AUF STEIN • Canlı Destek</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+ 
   <style>
-
-        /* === EMBED MODU (iframe için) === */
-    body.embed{
-      background: transparent;        /* Arka planı sayfa değil, panel hissi */
-      padding: 0;
-      min-height: 100vh;
-      align-items: stretch;
-      justify-content: stretch;
+    /* === STEIN AUF STEIN PREMIUM THEME === */
+    :root {
+      --hc-bg: #f8fafc;
+      --hc-panel-bg: #ffffff;
+      --hc-border: #e2e8f0;
+     
+      /* Renk Paleti: Koyu Slate ve Altın Dokunuşlar */
+      --hc-primary: #0f172a;       /* Ana Kurumsal Renk */
+      --hc-primary-hover: #334155;
+      --hc-accent: #c0a062;        /* Premium Altın/Bej Vurgu */
+     
+      --hc-text-main: #1e293b;
+      --hc-text-sub: #64748b;
+     
+      --hc-bot-bubble: #f1f5f9;
+      --hc-user-bubble: #0f172a;
+      --hc-user-text: #ffffff;
+     
+      --hc-shadow: 0 20px 40px -5px rgba(0, 0, 0, 0.1), 0 10px 20px -6px rgba(0, 0, 0, 0.05);
+      --hc-radius: 16px;
     }
 
-    body.embed .chat-wrap{
-      width: 100%;
-      max-width: 100%;
-      grid-template-columns: 1fr;    /* Sol kartı kaldırınca tek kolon */
+    body {
+      margin: 0; padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: var(--hc-bg);
+      color: var(--hc-text-main);
+      height: 100vh;
+      display: flex; justify-content: center; align-items: center;
     }
 
-    body.embed .brand-card{
-      display: none;                 /* Marka kartını gizle */
+    /* === EMBED MODE === */
+    body.hc-embed-mode { background: transparent; padding: 0; }
+    body.hc-embed-mode .hc-wrapper {
+      width: 100%; height: 100vh; max-width: 100%;
+      box-shadow: none; grid-template-columns: 1fr; border: none; border-radius: 0;
+    }
+    body.hc-embed-mode .hc-brand-side { display: none; }
+
+    /* Ana Kapsayıcı */
+    .hc-wrapper {
+      width: 1000px; height: 85vh; max-height: 850px;
+      display: grid; grid-template-columns: 300px 1fr;
+      background: var(--hc-panel-bg);
+      border-radius: var(--hc-radius);
+      box-shadow: var(--hc-shadow);
+      overflow: hidden;
+      border: 1px solid var(--hc-border);
     }
 
-    body.embed .panel{
-      min-height: 100vh;
-      max-height: 100vh;
-      border-radius: 18px;
-      box-shadow: none;              /* Shadow zaten dış çerçeveden geliyor */
+    /* --- SOL TARA (Marka & Bilgi) --- */
+    .hc-brand-side {
+      background: linear-gradient(160deg, #f8fafc 0%, #f1f5f9 100%);
+      border-right: 1px solid var(--hc-border);
+      padding: 32px 28px;
+      display: flex; flex-direction: column; gap: 28px;
+    }
+   
+    .hc-brand-header { display: flex; align-items: center; gap: 16px; }
+   
+    /* Logo İkonu - Premium Bina */
+    .hc-logo-icon {
+      width: 48px; height: 48px;
+      background: var(--hc-primary); color: var(--hc-accent);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15);
+    }
+    .hc-logo-icon svg { width: 26px; height: 26px; fill: currentColor; }
+
+    .hc-brand-texts h1 { font-size: 16px; font-weight: 800; margin: 0; letter-spacing: -0.01em; color: var(--hc-text-main); }
+    .hc-brand-texts p { font-size: 11px; margin: 4px 0 0 0; color: var(--hc-text-sub); text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+   
+    .hc-info-box {
+      margin-top: auto;
+      background: #ffffff; padding: 24px;
+      border-radius: 12px; border: 1px solid var(--hc-border);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    }
+    .hc-info-title { font-size: 11px; font-weight: 700; margin-bottom: 16px; text-transform: uppercase; color: var(--hc-text-sub); letter-spacing: 0.05em; }
+    .hc-info-list { list-style: none; padding: 0; margin: 0; font-size: 13px; color: var(--hc-text-main); line-height: 2.2; } /* Satır aralığı arttırıldı */
+    .hc-info-list li { display: flex; align-items: center; gap: 10px; }
+    .hc-info-list li svg { width: 16px; height: 16px; color: var(--hc-accent); flex-shrink: 0; }
+
+    /* --- SAĞ TARAF (Chat Paneli) --- */
+    .hc-chat-panel {
+      display: flex; flex-direction: column;
+      background: #fff; position: relative;
     }
 
-    :root{
-      --bg:#0b1020;
-      --panel:#0e1528;
-      --card:#0f1830;
-      --line:#1f2a44;
-      --text:#e8eefb;
-      --muted:#a8b3c7;
-      --accent:#9b87f5;
-      --accent-2:#7c6bf0;
-      --user:#1f3b75;
-      --bot:#0e1f38;
-      --ok:#10b981;
-      --warn:#f59e0b;
-      --err:#ef4444;
+    /* Header */
+    .hc-chat-head {
+      padding: 20px 28px;
+      border-bottom: 1px solid var(--hc-border);
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(255,255,255,0.9); backdrop-filter: blur(8px);
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Inter, Roboto, Arial;
-      color:var(--text); background:
-        radial-gradient(1000px 600px at 100% 0%, rgba(155,135,245,.12), transparent 50%),
-        linear-gradient(180deg,#0a0f1d,#0b1222 50%, #0a0f1d);
-      min-height:100vh;
-      display:flex; align-items:center; justify-content:center; padding:24px;
+    .hc-status-wrap { display: flex; align-items: center; gap: 12px; }
+    .hc-status-dot { width: 10px; height: 10px; border-radius: 50%; background: #10b981; box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12); transition: background 0.3s; }
+    .hc-head-title { font-weight: 700; font-size: 15px; color: var(--hc-text-main); }
+    .hc-live-badge { font-size: 12px; font-weight: 500; color: var(--hc-text-sub); background: #f1f5f9; padding: 6px 10px; border-radius: 6px; }
+
+    /* Mesaj Alanı */
+    .hc-msgs-area {
+      flex: 1; padding: 28px;
+      overflow-y: auto;
+      display: flex; flex-direction: column; gap: 20px;
+      scroll-behavior: smooth;
     }
 
-    /* WRAPPER */
-    .chat-wrap{
-      width:min(920px, 100%);
-      display:grid; grid-template-columns: 360px 1fr; gap:18px;
+    .hc-row { display: flex; gap: 16px; align-items: flex-end; animation: hcFadeIn 0.3s ease; }
+    .hc-row.hc-user { justify-content: flex-end; }
+   
+    /* Bot İkonu (SVG) */
+    .hc-avatar {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: #f1f5f9; color: var(--hc-primary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; border: 1px solid var(--hc-border);
     }
-    @media (max-width: 860px){ .chat-wrap{ grid-template-columns: 1fr; } }
-
-    /* LEFT CARD (Brand) */
-    .brand-card{
-      background:linear-gradient(180deg, #0e162b, #0d1426);
-      border:1px solid var(--line);
-      border-radius:18px; padding:18px;
-      box-shadow:0 12px 30px rgba(0,0,0,.35);
+    .hc-avatar svg { width: 20px; height: 20px; stroke-width: 1.8; }
+   
+    .hc-bubble {
+      max-width: 78%; padding: 16px 20px;
+      border-radius: 14px; font-size: 15px; line-height: 1.6;
+      position: relative; word-wrap: break-word;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
     }
-    .brand-row{ display:flex; align-items:center; gap:12px }
-    .brand-logo{
-      width:42px;height:42px;border-radius:12px;
-      background:linear-gradient(135deg, #a78bfa, #7c6bf0);
-      display:flex; align-items:center; justify-content:center; font-weight:800; color:#121628;
-      box-shadow:0 6px 18px rgba(124,107,240,.35);
+   
+    .hc-row.hc-bot .hc-bubble {
+      background: var(--hc-bot-bubble); color: var(--hc-text-main);
+      border-bottom-left-radius: 2px;
     }
-    .brand-title{ font-weight:800; letter-spacing:.3px }
-    .brand-sub{ font-size:13px; color:var(--muted) }
-
-    .brand-badges{ display:flex; gap:8px; margin-top:12px; flex-wrap:wrap }
-    .badge{
-      font-size:12px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; color:#dfe6ff;
-      background:#0e1629;
-    }
-    .hint{
-      margin-top:14px; font-size:13px; color:var(--muted); line-height:1.6
+    .hc-row.hc-user .hc-bubble {
+      background: var(--hc-user-bubble); color: var(--hc-user-text);
+      border-bottom-right-radius: 2px;
     }
 
-    /* PANEL */
-    .panel{
-      background:linear-gradient(180deg, #0e162b, #0d1426);
-      border:1px solid var(--line);
-      border-radius:18px; overflow:hidden;
-      box-shadow:0 16px 40px rgba(0,0,0,.45);
-      display:flex; flex-direction:column; min-height:520px; max-height:78vh;
+    /* Hızlı Soru Önerileri (Bulbs) */
+    .hc-suggestions {
+      margin-top: auto; display: flex; flex-wrap: wrap; gap: 10px; padding-top: 20px;
     }
-    .head{
-      display:flex; align-items:center; gap:12px; padding:12px 14px; border-bottom:1px solid var(--line);
-      background:linear-gradient(180deg, #0f1732, #0e162b);
+    .hc-chip {
+      background: #ffffff; border: 1px solid #cbd5e1;
+      color: var(--hc-text-main);
+      padding: 12px 18px; border-radius: 99px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+      white-space: nowrap; display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
     }
-    .status-dot{
-      width:10px;height:10px;border-radius:50%; background:var(--ok);
-      box-shadow:0 0 10px #10b981aa;
+    .hc-chip:hover {
+      border-color: var(--hc-primary); color: var(--hc-primary);
+      background: #f8fafc; transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.06);
     }
-    .title{ font-weight:800; letter-spacing:.25px }
-    .sub{ margin-left:auto; font-size:12px; color:var(--muted) }
+    .hc-chip svg { width: 14px; height: 14px; color: var(--hc-accent); }
 
-    /* MESSAGES */
-    .msgs{
-      padding:16px; overflow:auto; height:100%; min-height:340px;
-      background:
-        radial-gradient(1200px 600px at 100% 0%, rgba(155,135,245,.08), transparent 55%) ,
-        transparent;
+    /* Input Alanı & Büyük Gönder Butonu */
+    .hc-input-area {
+      padding: 24px; border-top: 1px solid var(--hc-border);
+      background: #fff; display: flex; gap: 14px; align-items: flex-end;
     }
-    .row{ display:flex; align-items:flex-end; gap:10px; margin:8px 0; }
-    .row.user{ justify-content:flex-end }
-    .avatar{
-      width:36px;height:36px;border-radius:50%;
-      background:#15254a; display:flex; align-items:center; justify-content:center; font-size:16px;
-      border:1px solid var(--line);
+    .hc-textarea {
+      flex: 1; border: 1px solid #e2e8f0; background: #f8fafc;
+      border-radius: 12px; padding: 16px 18px;
+      font-size: 15px; resize: none; height: 56px; max-height: 140px;
+      outline: none; font-family: inherit; transition: 0.2s; color: var(--hc-text-main);
     }
-    .avatar.bot{ background:#111c34 }
-    .bubble{
-      max-width:76%; padding:12px 14px; line-height:1.55; font-size:14.5px;
-      border-radius:14px; border:1px solid var(--line); color:#dfe6ff; position:relative;
-      word-wrap: break-word; white-space:pre-wrap;
-    }
-    .row.bot .bubble{ background:var(--bot) }
-    .row.user .bubble{ background:var(--user) }
-    .row.bot .bubble::after{
-      content:""; position:absolute; left:-8px; bottom:8px; width:0; height:0;
-      border-right: 8px solid var(--bot);
-      border-top: 8px solid transparent; border-bottom: 8px solid transparent;
-      filter: drop-shadow(-1px 0 0 var(--line));
-    }
-    .row.user .bubble::after{
-      content:""; position:absolute; right:-8px; bottom:8px; width:0; height:0;
-      border-left: 8px solid var(--user);
-      border-top: 8px solid transparent; border-bottom: 8px solid transparent;
-      filter: drop-shadow(1px 0 0 var(--line));
-    }
-    .meta{ font-size:11px; color:var(--muted); margin:4px 6px }
+    .hc-textarea:focus { border-color: var(--hc-primary); background: #fff; box-shadow: 0 0 0 4px rgba(15, 23, 42, 0.05); }
 
-    /* INPUT */
-    .input{
-      padding:12px; border-top:1px solid var(--line); background:#0e1629; display:flex; gap:10px;
+    .hc-send-btn {
+      width: 56px; height: 56px; border-radius: 12px;
+      border: none; background: var(--hc-primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1); flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
     }
-    textarea{
-      flex:1; resize:none; min-height:44px; max-height:140px;
-      padding:10px 12px; border-radius:12px; border:1px solid #223049; background:#0b1324; color:var(--text);
-      outline:none; box-shadow: inset 0 0 0 1px transparent; transition:.2s box-shadow, .2s border-color;
-    }
-    textarea:focus{ border-color:#33477a; box-shadow: inset 0 0 0 1px #33477a }
-    .send{
-      min-width:110px; border-radius:12px; border:1px solid #4b31c2;
-      background:linear-gradient(180deg, var(--accent), var(--accent-2)); color:#fff; font-weight:700; cursor:pointer;
-      padding:0 16px; height:44px; box-shadow:0 8px 24px rgba(124,107,240,.25); transition:.2s transform, .2s filter;
-    }
-    .send:active{ transform: translateY(1px) }
-    .send:disabled{ opacity:.65; cursor:not-allowed }
+    .hc-send-btn:hover { background: var(--hc-primary-hover); transform: translateY(-2px) scale(1.02); }
+    .hc-send-btn:active { transform: scale(0.95); }
+    .hc-send-btn:disabled { opacity: 0.7; transform: none; cursor: not-allowed; }
+    /* İkon daha büyük ve net */
+    .hc-send-btn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; margin-left: -2px; margin-top: 2px;}
 
-    /* Typing dots */
-    .typing{
-      display:inline-flex; gap:4px; align-items:center; padding:8px 0 0 0;
-    }
-    .dot{
-      width:6px;height:6px;border-radius:50%; background:#96a7c6; opacity:.25;
-      animation: blink 1.2s infinite;
-    }
-    .dot:nth-child(2){ animation-delay:.2s }
-    .dot:nth-child(3){ animation-delay:.4s }
-    @keyframes blink{ 0%, 100% { opacity:.25 } 50% { opacity:1 } }
+    /* Typing */
+    .hc-typing { display: inline-flex; gap: 5px; padding: 6px 0; }
+    .hc-dot { width: 7px; height: 7px; background: #94a3b8; border-radius: 50%; animation: hcBlink 1.4s infinite; }
+    .hc-dot:nth-child(2) { animation-delay: 0.2s; }
+    .hc-dot:nth-child(3) { animation-delay: 0.4s; }
+   
+    @keyframes hcFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes hcBlink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 
-    /* Utility */
-    .fade-in{ animation: fi .2s ease-out both }
-    @keyframes fi{ from{ opacity:0; transform:translateY(4px) } to{ opacity:1; transform:translateY(0) } }
-    a{ color:#c7b5ff; text-decoration:none }
+    /* === MOBİL === */
+    @media (max-width: 768px) {
+      body { padding: 0; align-items: flex-start; }
+      .hc-wrapper {
+        width: 100%; height: 100vh; max-height: 100vh;
+        border-radius: 0; border: none; grid-template-columns: 1fr;
+      }
+      .hc-brand-side { display: none; }
+      .hc-chat-head { padding: 16px; }
+      .hc-msgs-area { padding: 16px; }
+      .hc-chip { padding: 10px 14px; font-size: 12px; }
+      .hc-bubble { max-width: 85%; }
+    }
   </style>
 </head>
 <body>
 
-  <div class="chat-wrap">
-    <!-- SOL: Marka Kartı -->
-    <div class="brand-card">
-      <div class="brand-row">
-        <div class="brand-logo">B</div>
-        <div>
-          <div class="brand-title">Hukuk Bürosu Asistan</div>
-          <div class="brand-sub">Müşteri Hizmetleri • Yapay Zeka</div>
+  <div class="hc-wrapper">
+    <div class="hc-brand-side">
+      <div class="hc-brand-header">
+        <div class="hc-logo-icon">
+          <svg viewBox="0 0 24 24"><path d="M3 21h18v-8a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8z"></path><path d="M5 11V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v4"></path><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"></path></svg>
+        </div>
+        <div class="hc-brand-texts">
+          <h1>STEIN AUF STEIN</h1>
+          <p>Gayrimenkul & Yatırım</p>
         </div>
       </div>
-      <div class="brand-badges">
-        <div class="badge">güvenli yanıt</div>
-        <div class="badge">RAG / kaynaklı</div>
-        <div class="badge">rez/sipariş handoff</div>
-        <div class="badge">typing effect</div>
-      </div>
-      <div class="hint">
-        Örnek sorular:<br/>
-        • “Ücretsiz kargo eşiği nedir?”<br/>
-        • “Yarın 17:00 için 2 kişilik rezervasyon alabilir miyiz?”<br/>
-        • “20 şişe Prestige sipariş vermek istiyorum.”<br/>
+     
+      <div class="hc-info-box">
+        <div class="hc-info-title">Hizmetlerimiz</div>
+        <ul class="hc-info-list">
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Lüks Konut Projeleri
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            Yatırım Danışmanlığı
+          </li>
+          <li>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+            Ticari Mülk Yönetimi
+          </li>
+        </ul>
       </div>
     </div>
 
-    <!-- SAĞ: Sohbet Paneli -->
-    <div class="panel">
-      <div class="head">
-        <div class="status-dot" id="statusDot" title="hazır"></div>
-        <div class="title">Hukuk Destek</div>
-        <div class="sub" id="statusText">hazır</div>
+    <div class="hc-chat-panel">
+      <div class="hc-chat-head">
+        <div class="hc-status-wrap">
+          <div class="hc-status-dot" id="hcStatusDot"></div>
+          <div class="hc-head-title">Canlı Destek Asistanı</div>
+        </div>
+        <div class="hc-live-badge" id="hcStatusText">Bağlanıyor...</div>
       </div>
 
-      <div class="msgs" id="msgs">
-        <div class="row bot fade-in">
-          <div class="avatar bot">🤖</div>
+      <div class="hc-msgs-area" id="hcMsgs">
+        <div class="hc-row hc-bot">
+          <div class="hc-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7H11V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"></path></svg>
+          </div>
           <div>
-            <div class="bubble">Merhaba! Durumlarınızla ile ilgili sorularınızı memnuniyetle yanıtlarım. 😊</div>
-            <div class="meta">Asistan • şimdi</div>
+            <div class="hc-bubble">Merhaba! STEIN AUF STEIN'a hoş geldiniz. Size İstanbul portföyümüzle ilgili nasıl yardımcı olabilirim?</div>
+          </div>
+        </div>
+
+        <div class="hc-suggestions" id="hcSuggestions">
+          <div class="hc-chip" onclick="clickSuggestion('İstanbul Anadolu yakasında 3+1 daire arıyorum.')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Anadolu Yakası 3+1 Daire
+          </div>
+          <div class="hc-chip" onclick="clickSuggestion('Yatırımlık proje önerilerinizi alabilir miyim?')">
+             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+            Yatırımlık Fırsatlar
+          </div>
+          <div class="hc-chip" onclick="clickSuggestion('Güncel konut kredisi oranları nedir?')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            Kredi Bilgisi Al
           </div>
         </div>
       </div>
 
-      <div class="input">
-        <textarea id="text" placeholder="Mesajınızı yazın… (Enter: gönder • Shift+Enter: satır)"></textarea>
-        <button id="send" class="send">Gönder</button>
+      <div class="hc-input-area">
+        <textarea id="hcText" class="hc-textarea" placeholder="Mesajınızı buraya yazın..."></textarea>
+        <button id="hcSend" class="hc-send-btn">
+          <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
       </div>
     </div>
   </div>
 
   <script>
-     
-   // URL paramlarını oku
-  const params = new URLSearchParams(location.search);
+    /* === API CONFIG === */
+    // Botun cevap vermesi için brandKey'i 'hukuk-test' olarak tutuyoruz (çalışan anahtar).
+    // Ancak arayüzde 'STEIN AUF STEIN' gösteriyoruz.
+    const RAW_API_BASE = "https://hukuk-test.onrender.com";
+    const API_BASE = RAW_API_BASE.replace(/\/+$/, '');
+   
+    const params = new URLSearchParams(location.search);
+    const BRAND_KEY = params.get("brand") || "hukuk-test"; // <-- DÜZELTME BURADA
 
-  // brand param varsa onu kullan, yoksa brand'i gir.
-  const BRAND_KEY = params.get("brand") || "hukuk-test";
+    if (params.get("embed") === "1") {
+      document.body.classList.add("hc-embed-mode");
+    }
 
-  // embed=1 ise body'ye embed class'ı ekle
- if (params.get("embed") === "1") document.body.classList.add("embed");
-
-function getOrCreateLS(key, genFn){
-  try{
-    const v = localStorage.getItem(key);
-    if (v) return v;
-    const nv = genFn();
-    localStorage.setItem(key, nv);
-    return nv;
-  }catch(_){
-    // localStorage kapalıysa fallback
-    return genFn();
-  }
-}
-
-function uuidLike(){
-  // kripto güçlü olmasa da visitor/session için yeterli (istersen crypto.randomUUID kullanırız)
-  return "v_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-}
-
-function getVisitorId(){
-  return getOrCreateLS("bot_visitor_id", uuidLike);
-}
-
-function getSessionId(){
-  // session: her sayfa açılışında yenilensin
-  return "s_" + Math.random().toString(16).slice(2) + Date.now().toString(16);
-}
-
-function getSource(){
-  const p = new URLSearchParams(location.search);
-  const utm = {};
-  ["utm_source","utm_medium","utm_campaign","utm_term","utm_content"].forEach(k=>{
-    const v = p.get(k);
-    if (v) utm[k] = v;
-  });
-  return {
-    ...utm,
-    referrer: document.referrer || null,
-    landing: location.href
-  };
-}
-
-function getMeta(){
-  return {
-    ua: navigator.userAgent,
-    lang: navigator.language,
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    viewport: { w: window.innerWidth, h: window.innerHeight }
-  };
-}
-
-
-  (function(){
-    /* ====== AYAR ====== */
-    const RAW_API_BASE = "https://hukuk-test.onrender.com";   // sadece bunu değiştirmen gerekirse değiştir
-    const API_BASE = RAW_API_BASE.replace(/\/+$/,'');
-    /* ================== */
-
+    /* === UTILS === */
+    function getOrCreateLS(key, genFn) {
+      try { return localStorage.getItem(key) || (localStorage.setItem(key, genFn()), genFn()); } catch(_){ return genFn(); }
+    }
+    function uuidLike() { return "u_" + Math.random().toString(36).slice(2) + Date.now().toString(36); }
+   
     // State
     let threadId = null;
-    let sending  = false;
-    const VISITOR_ID = getVisitorId();
-    const SESSION_ID = getSessionId();
-    const SOURCE = getSource();
+    let sending = false;
+    const VISITOR_ID = getOrCreateLS("sas_visitor_id", uuidLike);
+    const SESSION_ID = "s_" + Math.random().toString(36).slice(2);
+   
+    /* === DOM === */
+    const $msgs  = document.getElementById("hcMsgs");
+    const $txt   = document.getElementById("hcText");
+    const $send  = document.getElementById("hcSend");
+    const $sDot  = document.getElementById("hcStatusDot");
+    const $sText = document.getElementById("hcStatusText");
+    const $suggs = document.getElementById("hcSuggestions");
 
-
-    // DOM
-    const $msgs  = document.getElementById("msgs");
-    const $txt   = document.getElementById("text");
-    const $send  = document.getElementById("send");
-    const $sText = document.getElementById("statusText");
-    const $sDot  = document.getElementById("statusDot");
-
-    function setStatus(text, color){
+    /* === FUNCTIONS === */
+    function setStatus(text, type){
       $sText.textContent = text;
-      if (color === "ok")      { $sDot.style.background = "var(--ok)"; }
-      else if (color === "err"){ $sDot.style.background = "var(--err)"; }
-      else if (color === "wait"){ $sDot.style.background = "#93c5fd"; }
-      else { $sDot.style.background = "var(--ok)"; }
+      if(type === "ok") $sDot.style.background = "#10b981"; // Yeşil
+      else if(type === "err") $sDot.style.background = "#ef4444"; // Kırmızı
+      else $sDot.style.background = "#fbbf24"; // Sarı (Bekleme)
     }
+
     function scrollEnd(){ $msgs.scrollTop = $msgs.scrollHeight; }
+   
+    function hideSuggestions(){
+      if($suggs) {
+        $suggs.style.opacity = '0';
+        setTimeout(() => $suggs.style.display = 'none', 200);
+      }
+    }
+   
+    // Global function for onclick
+    window.clickSuggestion = function(msg){
+      $txt.value = msg;
+      handleSend();
+    };
+
+    function escapeHtml(s){ return (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
     function addUser(text){
+      hideSuggestions();
       const row = document.createElement("div");
-      row.className = "row user fade-in";
-      row.innerHTML = `
-        <div>
-          <div class="bubble">${escape(text)}</div>
-          <div class="meta">Sen • şimdi</div>
-        </div>
-        <div class="avatar">🧑</div>
-      `;
-      $msgs.appendChild(row); scrollEnd();
+      row.className = "hc-row hc-user";
+      row.innerHTML = `<div class="hc-bubble">${escapeHtml(text)}</div>`;
+      $msgs.insertBefore(row, $suggs); // Bulb'ların üzerine ekle (gerçi bulb'lar gizleniyor)
+      scrollEnd();
     }
 
     function addBotSkeleton(){
       const row = document.createElement("div");
-      row.className = "row bot fade-in";
+      row.className = "hc-row hc-bot";
       row.innerHTML = `
-        <div class="avatar bot">🤖</div>
+        <div class="hc-avatar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7H11V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"></path></svg>
+        </div>
         <div>
-          <div class="bubble" id="bot-bubble"></div>
-          <div class="meta" id="bot-meta">Asistan • yazıyor…</div>
-          <div class="typing" id="bot-typing">
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          </div>
+          <div class="hc-bubble" id="hc-bot-bubble"></div>
+          <div class="hc-typing" id="hc-bot-typing"><span class="hc-dot"></span><span class="hc-dot"></span><span class="hc-dot"></span></div>
         </div>
       `;
-      $msgs.appendChild(row); scrollEnd();
-      return {
-        bubble: row.querySelector("#bot-bubble"),
-        meta:   row.querySelector("#bot-meta"),
-        typing: row.querySelector("#bot-typing"),
-      };
-    }
-
-    function finishBot(node){
-      if (node.typing && node.typing.parentNode) node.typing.parentNode.removeChild(node.typing);
-      node.meta.textContent = "Asistan • şimdi";
+      $msgs.insertBefore(row, $suggs);
       scrollEnd();
+      return { bubble: row.querySelector("#hc-bot-bubble"), typing: row.querySelector("#hc-bot-typing") };
     }
 
-    function escape(s=""){
-      return s.replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    }
+    function finishBot(node){ if(node.typing) node.typing.remove(); scrollEnd(); }
 
+    /* === LOGIC === */
     async function ensureThread(){
-      if (threadId) return threadId;
-      setStatus("başlatılıyor…","wait");
-      const r = await fetch(API_BASE + "/api/chat/init", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-  brandKey: BRAND_KEY,
-  visitorId: VISITOR_ID,
-  sessionId: SESSION_ID,
-  source: SOURCE,
-  meta: getMeta()
-})
-
-});
-
-      if (!r.ok) throw new Error("init_failed");
-      const j = await r.json();
-      threadId = j.threadId;
-      setStatus("hazır","ok");
-      return threadId;
-    }
-
-    // Streaming (SSE) okuyucu
-    async function sendMessageStream(threadId, message, onChunk){
-      const resp = await fetch(API_BASE + "/api/chat/stream", {
-        method:"POST",
-        headers:{ "Content-Type":"application/json", "Accept":"text/event-stream" },
-        body: JSON.stringify({
-  threadId,
-  message,
-  brandKey: BRAND_KEY,
-  visitorId: VISITOR_ID,
-  sessionId: SESSION_ID,
-  source: SOURCE,
-  meta: getMeta()
-})
-      });
-      if (!resp.ok || !resp.body) throw new Error("stream_response_error");
-
-      const reader  = resp.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true){
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value, { stream:true });
-        buffer += chunk;
-
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          const ln = line.trim();
-          if (!ln.startsWith("data:")) continue;
-          const dataStr = ln.slice(5).trim();
-          if (!dataStr || dataStr === "[DONE]") continue;
-
-          try{
-            const evt = JSON.parse(dataStr);
-            const parts = [];
-            if (evt?.delta?.content && Array.isArray(evt.delta.content)) {
-              for (const c of evt.delta.content) {
-                if (c?.type === "text" && c?.text?.value) parts.push(c.text.value);
-              }
-            }
-            if (evt?.message?.content && Array.isArray(evt.message.content)) {
-              for (const c of evt.message.content) {
-                if (c?.type === "text" && c?.text?.value) parts.push(c.text.value);
-              }
-            }
-            if (parts.length) onChunk(parts.join(""));
-          }catch(_){}
-        }
+      if(threadId) return threadId;
+      setStatus("Bağlanıyor...", "wait");
+      try {
+        const r = await fetch(API_BASE + "/api/chat/init", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ brandKey: BRAND_KEY, visitorId: VISITOR_ID, sessionId: SESSION_ID })
+        });
+        if(!r.ok) throw new Error("Init Failed");
+        const j = await r.json();
+        threadId = j.threadId;
+        setStatus("Çevrimiçi", "ok");
+        return threadId;
+      } catch(e) {
+        setStatus("Bağlantı Hatası", "err");
+        throw e;
       }
     }
 
     async function handleSend(){
-      if (sending) return;
-      const msg = ($txt.value||"").trim();
-      if (!msg) return;
+      if(sending) return;
+      const msg = ($txt.value || "").trim();
+      if(!msg) return;
 
-      sending = true;
-      $send.disabled = true; $txt.disabled = true;
-
+      sending = true; $send.disabled = true; $txt.disabled = true;
       addUser(msg);
       $txt.value = "";
-      await ensureThread();
 
-      const node = addBotSkeleton();
-      let acc = "";
+      try {
+        await ensureThread();
+        const node = addBotSkeleton();
+        let acc = "";
+       
+        setStatus("Yazıyor...", "wait");
 
-      try{
-        setStatus("yazıyor…","wait");
-        await sendMessageStream(threadId, msg, (chunk)=>{
-          acc += chunk;
-          node.bubble.textContent = acc;
-          scrollEnd();
+        const resp = await fetch(API_BASE + "/api/chat/stream", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ threadId, message: msg, brandKey: BRAND_KEY, visitorId: VISITOR_ID, sessionId: SESSION_ID })
         });
-        finishBot(node);
-        setStatus("hazır","ok");
-      }catch(e){
-        // fallback (non-stream)
-        try{
-          setStatus("cevap alınıyor…","wait");
-          const r = await fetch(API_BASE + "/api/chat/message", {
-            method:"POST",
-            headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({
-  threadId,
-  message: msg,
-  brandKey: BRAND_KEY,
-  visitorId: VISITOR_ID,
-  sessionId: SESSION_ID,
-  source: SOURCE,
-  meta: getMeta()
-})
 
-          });
-          const j = await r.json();
-          node.bubble.textContent = j.message || "(Yanıt alınamadı)";
-          finishBot(node);
-          setStatus("hazır","ok");
-        }catch(err){
-          node.bubble.textContent = "Üzgünüm, bir şeyler ters gitti. Lütfen tekrar dener misiniz? 🙏";
-          node.meta.textContent   = "Hata";
-          setStatus("hata","err");
-          setTimeout(()=> setStatus("hazır","ok"), 1500);
+        if(resp.ok && resp.body){
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder();
+          let hasContent = false;
+          while(true){
+            const { done, value } = await reader.read();
+            if(done) break;
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+            for(const line of lines){
+              if(line.startsWith("data:") && line !== "data: [DONE]"){
+                try{
+                  const evt = JSON.parse(line.slice(5));
+                  const content = evt?.delta?.content || evt?.message?.content;
+                  if(Array.isArray(content)){
+                    const txt = content.find(c => c.type === 'text')?.text?.value;
+                    if(txt) {
+                      acc += txt;
+                      node.bubble.textContent = acc;
+                      hasContent = true;
+                      scrollEnd();
+                    }
+                  }
+                }catch(_){}
+              }
+            }
+          }
+          if(!hasContent && acc === "") {
+             node.bubble.textContent = "Şu an yanıt alamıyorum. Lütfen daha sonra tekrar deneyin.";
+          }
+        } else {
+          node.bubble.textContent = "Bağlantı servisinde bir sorun var.";
         }
-      }finally{
-        sending = false;
-        $send.disabled = false; $txt.disabled = false; $txt.focus();
-        scrollEnd();
+       
+        finishBot(node);
+        setStatus("Çevrimiçi", "ok");
+
+      } catch(err) {
+        console.error(err);
+        setStatus("Bağlantı Yok", "err");
+      } finally {
+        sending = false; $send.disabled = false; $txt.disabled = false; $txt.focus(); scrollEnd();
       }
     }
 
-    // events
+    /* === INIT === */
     $send.addEventListener("click", handleSend);
-    $txt.addEventListener("keydown", (e)=>{
-      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
+    $txt.addEventListener("keydown", (e) => { if(e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } });
+   
+    // Auto resize textarea
+    $txt.addEventListener("input", function(){
+      this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px';
+      if(this.value === "") this.style.height = '56px';
     });
 
-    // ilk açılışta thread başlatma istersen:
-    // - ensureThread().catch(()=>{});
-  })();
+    // Sayfa açılışında bağlantıyı test et
+    ensureThread().catch(() => setStatus("Sunucuya ulaşılamadı", "err"));
+
   </script>
 </body>
 </html>
-
