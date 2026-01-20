@@ -527,6 +527,14 @@
                                         <td class="px-6 py-4 text-xs text-gray-400">
                                             <div v-if="s.last_indexed_at">
                                                 {{ formatFullDate(s.last_indexed_at) }}
+                                                <div class="mt-1">
+                                                    <span
+                                                        class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-700 text-gray-300 border border-gray-600"
+                                                        title="Okunan parça sayısı">
+                                                        <i class="ri-file-text-line mr-1"></i> {{ s.chunk_count || 0 }}
+                                                        Parça
+                                                    </span>
+                                                </div>
                                             </div>
                                             <div v-else class="opacity-50">-</div>
                                         </td>
