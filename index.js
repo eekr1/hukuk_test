@@ -43,11 +43,13 @@ app.use(rateLimit({
 
 import cookieParser from "cookie-parser";
 import adminRoutes from "./routes/admin.js";
+import adminSourcesRouter from "./routes/admin_sources.js";
 
 /* ==================== Routes ==================== */
 app.use(cookieParser()); // Cookie parse et
 app.use("/api/chat", chatRoutes);
 app.use("/api/admin", adminRoutes); // Admin routes
+app.use("/api/admin/sources", adminSourcesRouter);
 
 /* ==================== Mail Isolated Test Endpoint (opsiyonel) ==================== */
 app.post("/_mail_test", async (req, res) => {
