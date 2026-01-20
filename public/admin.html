@@ -1014,6 +1014,19 @@
                         }
                     }
                 };
+                const deleteSource = async (s) => {
+                    if (!confirm(`${s.url} adresini silmek istediğinize emin misiniz?\nİlgili tüm veri ve indeksler silinecektir.`)) return;
+                    try {
+                        const res = await fetch(`/api/admin/sources/${s.id}`, { method: "DELETE" });
+                        if (res.ok) {
+                            fetchSources();
+                        } else {
+                            alert("Silme işlemi başarısız oldu.");
+                        }
+                    } catch (e) {
+                        alert("Hata: " + e.message);
+                    }
+                };
 
                 const searchTest = async () => {
                     if (!testQuery.value) return;
