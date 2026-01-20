@@ -95,7 +95,22 @@ router.post("/stream", chatLimiter, async (req, res) => {
                 stream: true,
                 metadata: { brandKey }, // izleme
                 // ✅ Hukuk botu run talimatı (kritik)
-                instructions: buildRunInstructions(brandKey, brandCfg),
+                instructions: await (async () => {
+                    let instr = buildRunInstructions(brandKey, brandCfg);
+                    // RAG ENTEGRASYONU
+                    try {
+                        const { searchSimilarChunks } = await import("../services/rag.js");
+                        const results = await searchSimilarChunks(brandKey, message);
+                        if (results && results.length > 0) {
+                            console.log(`[RAG-STREAM] Found ${results.length} chunks for query: "${message}"`);
+                            const contextText = results.map(r => `--- SOURCE START (Score: ${r.score.toFixed(2)}) ---\n${r.content}\n--- SOURCE END ---`).join("\n\n");
+                            instr += `\n\n# KNOWLEDGE BASE CONTEXT (Use this to answer if relevant):\n${contextText}\n\nIMPORTANT: If the answer is found in the KNOWLEDGE BASE CONTEXT, use it. If not, fallback to your general knowledge but prioritize provided context.`;
+                        }
+                    } catch (err) {
+                        console.error("[RAG-STREAM] Context fetch failed:", err);
+                    }
+                    return instr;
+                })(),
 
             }),
 
@@ -453,7 +468,22 @@ router.post("/message", chatLimiter, async (req, res) => {
                 metadata: { brandKey },
 
                 // ✅ Hukuk botu run talimatı (kritik)
-                instructions: buildRunInstructions(brandKey, brandCfg)
+                instructions: await (async () => {
+                    let instr = buildRunInstructions(brandKey, brandCfg);
+                    // RAG ENTEGRASYONU
+                    try {
+                        const { searchSimilarChunks } = await import("../services/rag.js");
+                        const results = await searchSimilarChunks(brandKey, message);
+                        if (results && results.length > 0) {
+                            console.log(`[RAG] Found ${results.length} chunks for query: "${message}"`);
+                            const contextText = results.map(r => `--- SOURCE START (Score: ${r.score.toFixed(2)}) ---\n${r.content}\n--- SOURCE END ---`).join("\n\n");
+                            instr += `\n\n# KNOWLEDGE BASE CONTEXT (Use this to answer if relevant):\n${contextText}\n\nIMPORTANT: If the answer is found in the KNOWLEDGE BASE CONTEXT, use it. If not, fallback to your general knowledge but prioritize provided context.`;
+                        }
+                    } catch (err) {
+                        console.error("[RAG] Context fetch failed:", err);
+                    }
+                    return instr;
+                })()
 
             },
         });
