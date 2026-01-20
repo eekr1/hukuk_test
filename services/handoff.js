@@ -82,7 +82,12 @@ export function hasMinimumHandoffData(cleanPayload = {}) {
         });
     }
 
-    return hasName && hasPhone && hasText && hasMode && hasDateTime;
+    // 🚀 Reliability Fix:
+    // Handoff'u "Mode" veya "DateTime" eksik diye ASLA bloklama.
+    // Kullanıcı adı ve telefonunu verdiyse bu bir lead'dir; detaylar eksik olsa da ilet.
+    // (Eksik alanlar normalize aşamasında "Belirtilmedi" olarak doldurulur).
+    
+    return hasName && hasPhone && hasText;
 
 }
 
