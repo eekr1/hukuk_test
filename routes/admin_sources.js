@@ -63,6 +63,17 @@ router.patch("/:id", async (req, res) => {
     }
 });
 
+/* 3.1. DELETE /:id - Remove source */
+router.delete("/:id", async (req, res) => {
+    try {
+        await deleteSource(req.params.id);
+        return res.json({ success: true });
+    } catch (e) {
+        console.error(e);
+        return res.status(500).json({ error: "Failed to delete source" });
+    }
+});
+
 /* 4. POST /:id/index - Trigger Indexing */
 router.post("/:id/index", async (req, res) => {
     // We can respond immediately "Indexing started" or await it.
