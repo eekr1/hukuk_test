@@ -448,12 +448,18 @@ export function normalizeHandoffPayload(payload = {}) {
 
     if (!out.preferred_meeting.date) {
         const urgencyKeywords = ["hemen", "acil", "kısa", "en kısa zamanda", "en kısa sürede", "müsaitlikte", "uygun zamanda", "dönüş yaparsanız", "haber bekliyorum"];
+
+        // Varsa aciliyet, yoksa genel default
         if (urgencyKeywords.some(kw => combinedText.includes(kw))) {
             out.preferred_meeting.date = "En kısa sürede (Tespit edilen)";
-            if (!out.preferred_meeting.time) {
-                out.preferred_meeting.time = "Müsaitlik durumuna göre";
-            }
+        } else {
+            out.preferred_meeting.date = "Belirtilmedi";
         }
+    }
+
+    // Tarih bir şekilde doldu ama saat yoksa:
+    if (!out.preferred_meeting.time) {
+        out.preferred_meeting.time = "Müsaitlik durumuna göre";
     }
 
     // Mod boşsa varsayılan ata (Bloklamaması için)
