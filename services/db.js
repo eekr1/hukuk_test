@@ -163,3 +163,136 @@ export async function logChatMessage({
     console.error("[db] connection error:", e);
   }
 }
+
+/* ================== SOURCES HELPERS ================== */
+
+export async function getSources(brandKey) {
+  const res = await pool.query(
+    `SELECT * FROM sources WHERE brand_key = $1 ORDER BY created_at DESC`,
+    [brandKey]
+  );
+  return res.rows;
+}
+
+export async function addSource({ brandKey, url }) {
+  const res = await pool.query(
+    `INSERT INTO sources (brand_key, url) VALUES ($1, $2) RETURNING *`,
+    [brandKey, url]
+  );
+  return res.rows[0];
+}
+
+export async function updateSourceStatus(id, { status, lastError, indexed }) {
+  let q = `UPDATE sources SET status = $1, last_error = $2, updated_at = NOW()`;
+  const vals = [status, lastError || null];
+  let idx = 3;
+
+  if (indexed) {
+    q += `, last_indexed_at = NOW()`;
+  }
+
+  q += ` WHERE id = $${idx} RETURNING *`;
+  vals.push(id);
+
+  const res = await pool.query(q, vals);
+  return res.rows[0];
+}
+
+export async function toggleSource(id, enabled) {
+  const res = await pool.query(
+    `UPDATE sources SET enabled = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
+    [enabled, id]
+  );
+  return res.rows[0];
+}
+
+export async function deleteSource(id) {
+  await pool.query(`DELETE FROM sources WHERE id = $1`, [id]);
+}
+
+export async function getSourceById(id) {
+  const res = await pool.query(`SELECT * FROM sources WHERE id = $1`, [id]);
+  return res.rows[0];
+}
+
+
+/* ================== CHUNKS & EMBEDDINGS HELPERS ================== */
+
+export async function clearSourceChunks(sourceId) {
+  // cascade deletes embeddings too
+  await pool.query(`DELETE FROM source_chunks WHERE source_id = $1`, [sourceId]);
+}
+
+export async function saveSourceChunks(sourceId, brandKey, chunksWithEmbeddings) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    for (let i = 0; i < chunksWithEmbeddings.length; i++) {
+      const item = chunksWithEmbeddings[i];
+      // 1) insert chunk
+      const chunkRes = await client.query(
+        `INSERT INTO source_chunks (source_id, brand_key, chunk_index, content)
+                 VALUES ($1, $2, $3, $4)
+                 RETURNING id`,
+        [sourceId, brandKey, i, item.text]
+      );
+      const chunkId = chunkRes.rows[0].id;
+
+      // 2) insert embedding (jsonb)
+      await client.query(
+        `INSERT INTO source_embeddings (chunk_id, brand_key, embedding)
+                 VALUES ($1, $2, $3)`,
+        [chunkId, brandKey, JSON.stringify(item.embedding)]
+      );
+    }
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+// Simple Cosine Similarity in JS (for MVP)
+// Fetch all embeddings for brand -> compute distance -> sort
+// Optimization: If rows > 10k, this will be slow. For <10k it's fine.
+export async function searchVectors(brandKey, queryVec, limit = 5) {
+  // 1) Fetch all embeddings for this brand (TODO: cache or use pgvector later)
+  const q = `
+        SELECT se.chunk_id, se.embedding, sc.content, s.url
+        FROM source_embeddings se
+        JOIN source_chunks sc ON se.chunk_id = sc.id
+        JOIN sources s ON sc.source_id = s.id
+        WHERE se.brand_key = $1 AND s.enabled = true
+    `;
+  const res = await pool.query(q, [brandKey]);
+  const candidates = res.rows;
+
+  if (!candidates.length) return [];
+
+  // 2) Compute Cosine Similarity
+  const results = candidates.map(row => {
+    const vec = row.embedding; // JSONB parsed automatically by pg driver
+    const score = cosineSimilarity(queryVec, vec);
+    return { ...row, score };
+  });
+
+  // 3) Sort & Limit
+  results.sort((a, b) => b.score - a.score);
+  return results.slice(0, limit);
+}
+
+function cosineSimilarity(a, b) {
+  let dot = 0;
+  let magA = 0;
+  let magB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i] * b[i];
+    magA += a[i] * a[i];
+    magB += b[i] * b[i];
+  }
+  return dot / (Math.sqrt(magA) * Math.sqrt(magB) || 1);
+}
