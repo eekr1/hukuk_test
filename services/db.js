@@ -26,7 +26,7 @@ export async function ensureTables() {
         last_message_at TIMESTAMPTZ DEFAULT now()
       );
 
-     CREATE TABLE IF NOT EXISTS messages (
+    CREATE TABLE IF NOT EXISTS messages (
   id SERIAL PRIMARY KEY,
   conversation_id INTEGER REFERENCES conversations(id) ON DELETE CASCADE,
   role TEXT NOT NULL,
@@ -40,6 +40,35 @@ export async function ensureTables() {
   meeting_time TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
+
+    -- NEW: Sources (Knowledge Base)
+    CREATE TABLE IF NOT EXISTS sources (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      brand_key TEXT NOT NULL,
+      url TEXT NOT NULL,
+      enabled BOOLEAN DEFAULT true,
+      status TEXT DEFAULT 'idle', -- idle, indexing, error
+      last_indexed_at TIMESTAMPTZ,
+      last_error TEXT,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS source_chunks (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      source_id UUID REFERENCES sources(id) ON DELETE CASCADE,
+      brand_key TEXT NOT NULL,
+      chunk_index INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS source_embeddings (
+      chunk_id UUID REFERENCES source_chunks(id) ON DELETE CASCADE,
+      brand_key TEXT NOT NULL,
+      embedding JSONB NOT NULL,
+      PRIMARY KEY (chunk_id)
+    );
 
     `);
 
