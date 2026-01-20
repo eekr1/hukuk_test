@@ -3,6 +3,8 @@ import * as cheerio from "cheerio";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import { searchVectors } from "./db.js";
+import http from "http";
+import https from "https";
 
 /* ================== CONSTANTS ================== */
 const CHUNK_SIZE = 1000;
@@ -31,8 +33,11 @@ export async function fetchUrlContent(url) {
             timeout: 15000, // 15s timeout
             maxContentLength: 5 * 1024 * 1024, // 5MB max
             headers: {
-                "User-Agent": "YMH-Hukuk-Bot/1.0 (KnowledgeBase Indexer)"
-            }
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            httpAgent: new http.Agent({ family: 4 }),
+            httpsAgent: new https.Agent({ family: 4 }),
+            validateStatus: (status) => status < 400
         });
 
         return resp.data; // HTML content
