@@ -3,8 +3,7 @@ import * as cheerio from "cheerio";
 import { Readability } from "@mozilla/readability";
 import { JSDOM } from "jsdom";
 import { searchVectors } from "./db.js";
-import http from "http";
-import https from "https";
+import puppeteer from "puppeteer";
 
 /* ================== CONSTANTS ================== */
 const CHUNK_SIZE = 1000;
@@ -18,8 +17,9 @@ function isPrivateIP(ip) {
     );
 }
 
-/* ================== 1. FETCHER ================== */
+/* ================== 1. FETCHER (PUPPETEER) ================== */
 export async function fetchUrlContent(url) {
+    let browser;
     try {
         const u = new URL(url);
         if (u.protocol !== "http:" && u.protocol !== "https:") {
@@ -29,32 +29,42 @@ export async function fetchUrlContent(url) {
             throw new Error("Private IP/Localhost not allowed");
         }
 
-        const resp = await axios.get(url, {
-            timeout: 15000, // 15s timeout
-            maxContentLength: 5 * 1024 * 1024, // 5MB max
-            headers: {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-                "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
-                "Accept-Encoding": "gzip, deflate, br", // Axios handles decoding automatically
-                "Cache-Control": "max-age=0",
-                "Upgrade-Insecure-Requests": "1",
-                "Sec-Ch-Ua": '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                "Sec-Ch-Ua-Mobile": "?0",
-                "Sec-Ch-Ua-Platform": '"Windows"',
-                "Sec-Fetch-Dest": "document",
-                "Sec-Fetch-Mode": "navigate",
-                "Sec-Fetch-Site": "none",
-                "Sec-Fetch-User": "?1"
-            },
-            httpAgent: new http.Agent({ family: 4 }),
-            httpsAgent: new https.Agent({ family: 4 }),
-            validateStatus: (status) => status < 400
+        // Launch Puppeteer (Headless Chrome)
+        // Args needed for some container environments (like Render/Docker)
+        browser = await puppeteer.launch({
+            headless: "new",
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-accelerated-2d-canvas',
+                '--disable-gpu'
+            ]
         });
 
-        return resp.data; // HTML content
+        const page = await browser.newPage();
+
+        // Set User Agent to standard Chrome
+        await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+
+        // Set minimal headers to look legit
+        await page.setExtraHTTPHeaders({
+            "Accept-Language": "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
+        });
+
+        // Navigate
+        // waitUntil: 'networkidle2' means wait until at most 2 connections are open (good for SPAs)
+        await page.goto(url, { waitUntil: "networkidle2", timeout: 30000 });
+
+        // Get full HTML
+        const html = await page.content();
+        return html;
+
     } catch (e) {
         throw new Error(`Fetch failed: ${e.message}`);
+    } finally {
+        if (browser) await browser.close();
     }
 }
 
