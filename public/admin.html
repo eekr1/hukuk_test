@@ -549,6 +549,13 @@
                                                 <i class="ri-flashlight-line" v-if="s.status !== 'indexing'"></i>
                                                 <i class="ri-loader-4-line animate-spin" v-else></i>
                                             </button>
+
+                                            <!-- Delete -->
+                                            <button @click="deleteSource(s)"
+                                                class="bg-red-900/40 hover:bg-red-600 border border-red-800 text-red-400 hover:text-white px-3 py-1.5 rounded text-xs font-bold transition-colors"
+                                                title="Sil">
+                                                <i class="ri-delete-bin-line"></i>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -1132,7 +1139,7 @@
 
                     // Sources
                     sources, newSourceUrl, addingSource, addSource, fetchSources,
-                    toggleSource, indexSource, testQuery, searching, searchTest, searchResults, searchPerformed,
+                    toggleSource, indexSource, deleteSource, testQuery, searching, searchTest, searchResults, searchPerformed,
 
                     // Utils
                     isStaleNew, cleanPhone, timeAgo, formatFullDate, formatTime, statusOptions
