@@ -116,11 +116,29 @@
             <!-- Navbar -->
             <header
                 class="bg-gray-800 border-b border-gray-700 h-16 flex items-center justify-between px-6 flex-shrink-0 z-20">
-                <div class="flex items-center gap-3">
-                    <i class="ri-briefcase-4-line text-brand-500 text-2xl"></i>
-                    <span class="font-bold text-lg tracking-wide">YMH Hukuk <span
-                            class="text-gray-500 text-sm font-normal ml-1">CRM v4.0</span></span>
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-3">
+                        <i class="ri-briefcase-4-line text-brand-500 text-2xl"></i>
+                        <span class="font-bold text-lg tracking-wide">YMH Hukuk <span
+                                class="text-gray-500 text-sm font-normal ml-1">CRM v4.0</span></span>
+                    </div>
+
+                    <!-- Tabs -->
+                    <div
+                        class="hidden md:flex space-x-2 ml-6 h-10 bg-gray-900/50 p-1 rounded-lg border border-gray-700">
+                        <button @click="activeTab = 'HANDOFFS'"
+                            class="px-4 rounded-md text-sm font-medium transition-all flex items-center gap-2"
+                            :class="activeTab === 'HANDOFFS' ? 'bg-gray-700 text-white shadow' : 'text-gray-400 hover:text-white'">
+                            <i class="ri-inbox-archive-line"></i> Talepler
+                        </button>
+                        <button @click="activeTab = 'SOURCES'"
+                            class="px-4 rounded-md text-sm font-medium transition-all flex items-center gap-2"
+                            :class="activeTab === 'SOURCES' ? 'bg-gray-700 text-white shadow' : 'text-gray-400 hover:text-white'">
+                            <i class="ri-book-read-line"></i> Kaynaklar (Sources)
+                        </button>
+                    </div>
                 </div>
+
                 <div class="flex items-center gap-4">
                     <span class="text-sm text-gray-400 hidden sm:inline">Admin</span>
                     <button @click="logout"
@@ -134,285 +152,450 @@
             <main class="flex-1 overflow-auto bg-gray-900 p-6 scroll-smooth">
                 <div class="max-w-7xl mx-auto space-y-6">
 
-                    <!-- 1. Stats -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <!-- Today -->
-                        <div
-                            class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-xs font-semibold uppercase">Bugün Gelen</p>
-                                <p class="text-2xl font-bold text-white mt-1">{{ stats.today || 0 }}</p>
-                            </div>
+                    <!-- TAB: HANDOFFS -->
+                    <div v-show="activeTab === 'HANDOFFS'" class="space-y-6">
+                        <!-- 1. Stats -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Today -->
                             <div
-                                class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
-                                <i class="ri-calendar-check-line text-xl"></i>
+                                class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-xs font-semibold uppercase">Bugün Gelen</p>
+                                    <p class="text-2xl font-bold text-white mt-1">{{ stats.today || 0 }}</p>
+                                </div>
+                                <div
+                                    class="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                    <i class="ri-calendar-check-line text-xl"></i>
+                                </div>
+                            </div>
+                            <!-- Pending -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-xs font-semibold uppercase">Bekleyen (NEW)</p>
+                                    <p class="text-2xl font-bold text-brand-500 mt-1">{{ stats.pending || 0 }}</p>
+                                </div>
+                                <div
+                                    class="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500">
+                                    <i class="ri-time-line text-xl"></i>
+                                </div>
+                            </div>
+                            <!-- Weekly -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex items-center justify-between">
+                                <div>
+                                    <p class="text-gray-400 text-xs font-semibold uppercase">Son 7 Gün</p>
+                                    <p class="text-2xl font-bold text-white mt-1">{{ stats.weekly || 0 }}</p>
+                                </div>
+                                <div
+                                    class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
+                                    <i class="ri-bar-chart-groupped-line text-xl"></i>
+                                </div>
+                            </div>
+                            <!-- Trend -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-center">
+                                <p class="text-gray-400 text-xs font-semibold uppercase mb-1">Popüler Kategori (7 gün)
+                                </p>
+                                <div v-if="stats.categories && stats.categories.length > 0">
+                                    <span class="text-white font-bold">{{ stats.categories[0].category.toUpperCase()
+                                        }}</span>
+                                    <span class="text-gray-500 text-sm ml-1">({{ stats.categories[0].count }})</span>
+                                </div>
+                                <div v-else class="text-gray-500 text-sm italic">Veri yok</div>
                             </div>
                         </div>
-                        <!-- Pending -->
+
+                        <!-- 2. Filters & Toolbar -->
                         <div
-                            class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-xs font-semibold uppercase">Bekleyen (NEW)</p>
-                                <p class="text-2xl font-bold text-brand-500 mt-1">{{ stats.pending || 0 }}</p>
+                            class="flex flex-col xl:flex-row items-center justify-between gap-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700/50 backdrop-blur-sm sticky top-0 z-10 shadow-lg">
+
+                            <!-- Search Bar -->
+                            <div class="relative w-full xl:w-96 group">
+                                <i
+                                    class="ri-search-line absolute left-3 top-2.5 text-gray-500 group-focus-within:text-brand-500 transition-colors"></i>
+                                <input v-model="searchQuery" @input="debounceSearch" type="text"
+                                    class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all text-sm"
+                                    placeholder="İsim, telefon veya notlarda ara...">
                             </div>
-                            <div
-                                class="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500">
-                                <i class="ri-time-line text-xl"></i>
+
+                            <div class="flex flex-wrap items-center gap-3 w-full justify-end">
+                                <!-- Quick Filter: Today's NEW -->
+                                <button @click="toggleTodayNew"
+                                    class="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2"
+                                    :class="filterTodayNew ? 'bg-blue-600/20 text-blue-400 border-blue-500/50 ring-1 ring-blue-500/50' : 'bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700'">
+                                    <i class="ri-flashlight-fill"></i> Bugün Gelen
+                                </button>
+
+                                <!-- Status Filter -->
+                                <div class="relative">
+                                    <select v-model="filterStatus" @change="fetchData"
+                                        class="appearance-none bg-gray-800 border border-gray-600 text-white py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:border-brand-500 text-xs font-medium cursor-pointer hover:bg-gray-700 transition-colors">
+                                        <option value="ALL">Durum: Tümü</option>
+                                        <option value="NEW">Yeni / Bekleyen</option>
+                                        <option value="ARANDI">Arandı</option>
+                                        <option value="RANDEVU">Randevu</option>
+                                        <option value="KAPANDI">Kapandı</option>
+                                        <option value="SPAM">Spam</option>
+                                    </select>
+                                    <i
+                                        class="ri-arrow-down-s-fill absolute right-2 top-2.5 text-gray-400 pointer-events-none"></i>
+                                </div>
+
+                                <!-- Category Filter -->
+                                <div class="relative">
+                                    <select v-model="filterCategory" @change="fetchData"
+                                        class="appearance-none bg-gray-800 border border-gray-600 text-white py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:border-brand-500 text-xs font-medium cursor-pointer hover:bg-gray-700 transition-colors">
+                                        <option value="ALL">Kategori: Tümü</option>
+                                        <option value="aile">Aile</option>
+                                        <option value="is">İş</option>
+                                        <option value="ceza">Ceza</option>
+                                        <option value="tazminat">Tazminat</option>
+                                        <option value="kira">Kira</option>
+                                        <option value="icra">İcra</option>
+                                        <option value="diger">Diğer</option>
+                                    </select>
+                                    <i
+                                        class="ri-filter-3-line absolute right-2 top-2.5 text-gray-400 pointer-events-none"></i>
+                                </div>
+
+                                <!-- Date Filter -->
+                                <div class="relative">
+                                    <select v-model="filterDays" @change="fetchData"
+                                        class="appearance-none bg-gray-800 border border-gray-600 text-white py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:border-brand-500 text-xs font-medium cursor-pointer hover:bg-gray-700 transition-colors">
+                                        <option value="">Tarih: Tümü</option>
+                                        <option value="1">Son 24 Saat</option>
+                                        <option value="3">Son 3 Gün</option>
+                                        <option value="7">Son 7 Gün</option>
+                                        <option value="30">Son 30 Gün</option>
+                                    </select>
+                                    <i
+                                        class="ri-calendar-event-line absolute right-2 top-2.5 text-gray-400 pointer-events-none"></i>
+                                </div>
+
+                                <button @click="fetchData"
+                                    class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors border border-gray-600"
+                                    title="Yenile">
+                                    <i class="ri-refresh-line" :class="{ 'animate-spin': loadingData }"></i>
+                                </button>
                             </div>
                         </div>
-                        <!-- Weekly -->
+
+                        <!-- 3. Table -->
                         <div
-                            class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex items-center justify-between">
-                            <div>
-                                <p class="text-gray-400 text-xs font-semibold uppercase">Son 7 Gün</p>
-                                <p class="text-2xl font-bold text-white mt-1">{{ stats.weekly || 0 }}</p>
+                            class="bg-gray-800 rounded-xl border border-gray-700 overflow-visible shadow-xl relative min-h-[400px]">
+                            <div class="overflow-visible">
+                                <table class="w-full text-left text-sm text-gray-300">
+                                    <thead
+                                        class="bg-gray-900/50 text-xs uppercase font-medium text-gray-400 border-b border-gray-700 sticky top-0 z-0">
+                                        <tr>
+                                            <th class="px-6 py-4 w-32">Durum</th>
+                                            <th class="px-6 py-4 w-40">Zaman</th>
+                                            <th class="px-6 py-4 w-56">İletişim</th>
+                                            <th class="px-6 py-4 w-32">Kategori</th>
+                                            <th class="px-6 py-4">Detaylar</th>
+                                            <th class="px-6 py-4 w-20 text-right">Geçmiş</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-700">
+                                        <tr v-if="!handoffs.length && !loadingData" class="hover:bg-gray-800/50">
+                                            <td colspan="6"
+                                                class="px-6 py-12 text-center text-gray-500 italic flex flex-col items-center">
+                                                <i class="ri-inbox-2-line text-4xl mb-2 opacity-30"></i>
+                                                <span>Kriterlere uygun kayıt bulunamadı.</span>
+                                            </td>
+                                        </tr>
+
+                                        <tr v-for="(item, index) in handoffs" :key="item.id"
+                                            class="group hover:bg-gray-700/30 transition-colors relative"
+                                            :class="{ 'bg-yellow-900/10 hover:bg-yellow-900/20': isStaleNew(item) }">
+
+                                            <!-- Stale Indicator -->
+                                            <td class="absolute left-0 top-0 bottom-0 w-1 bg-yellow-600"
+                                                v-if="isStaleNew(item)" title="Eskimiş Yeni Talep (24s+)"></td>
+
+                                            <!-- Status -->
+                                            <td class="px-6 py-4 align-top">
+                                                <div class="relative inline-block text-left">
+                                                    <button @click.stop="openStatusMenu(item)"
+                                                        class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border shadow-sm flex items-center gap-1 w-24 justify-center"
+                                                        :class="getStatusColor(item.status)">
+                                                        {{ item.status }}
+                                                        <i class="ri-arrow-down-s-fill opacity-50"></i>
+                                                    </button>
+
+                                                    <!-- Smart Dropdown -->
+                                                    <div v-if="activeMenuId === item.id"
+                                                        class="absolute z-50 w-32 rounded-md shadow-2xl bg-gray-800 ring-1 ring-black ring-opacity-5 border border-gray-600 overflow-hidden"
+                                                        :class="index > handoffs.length - 4 ? 'bottom-full mb-1' : 'top-full mt-1 left-0'">
+                                                        <div class="py-1">
+                                                            <a v-for="st in statusOptions" :key="st"
+                                                                @click.stop="updateStatus(item, st)"
+                                                                class="block px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white cursor-pointer transition-colors flex items-center justify-between"
+                                                                :class="{'bg-gray-700/50 text-brand-500 font-bold': item.status === st}">
+                                                                {{ st }}
+                                                                <i class="ri-check-line" v-if="item.status === st"></i>
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                    <div v-if="activeMenuId === item.id"
+                                                        @click.stop="activeMenuId = null"
+                                                        class="fixed inset-0 z-40 cursor-default"></div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Date (TimeAgo) -->
+                                            <td class="px-6 py-4 align-top">
+                                                <div class="text-white font-medium text-sm"
+                                                    :title="formatFullDate(item.date)">
+                                                    {{ timeAgo(item.date) }}
+                                                </div>
+                                                <div class="text-gray-500 text-xs mt-1 font-mono">
+                                                    {{ formatTime(item.date) }}
+                                                </div>
+                                            </td>
+
+                                            <!-- Contact (Shortcuts) -->
+                                            <td class="px-6 py-4 align-top">
+                                                <div class="text-white font-medium mb-1">{{ item.name }}</div>
+                                                <div class="flex items-center gap-2" v-if="item.phone">
+                                                    <!-- Phone Link -->
+                                                    <a :href="'tel:' + cleanPhone(item.phone)"
+                                                        class="text-xs bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 px-2 py-1 rounded flex items-center gap-1 transition-colors group/ph"
+                                                        title="Ara">
+                                                        <i
+                                                            class="ri-phone-fill text-gray-400 group-hover/ph:text-white"></i>
+                                                        {{ item.phone }}
+                                                    </a>
+                                                    <!-- WhatsApp Link -->
+                                                    <a :href="'https://wa.me/' + cleanPhone(item.phone)" target="_blank"
+                                                        class="text-green-500 hover:text-green-400 transition-colors p-1"
+                                                        title="WhatsApp">
+                                                        <i class="ri-whatsapp-fill text-lg"></i>
+                                                    </a>
+                                                </div>
+                                                <div class="text-gray-500 text-xs mt-1" v-if="item.email">{{ item.email
+                                                    }}
+                                                </div>
+                                            </td>
+
+                                            <!-- Category -->
+                                            <td class="px-6 py-4 align-top">
+                                                <span
+                                                    class="inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-700 text-gray-300 border border-gray-600 tracking-wider">
+                                                    {{ item.category }}
+                                                </span>
+                                                <!-- Meeting Info -->
+                                                <div v-if="item.meetingDate || item.meetingMode"
+                                                    class="mt-2 bg-purple-900/30 border border-purple-700/50 rounded p-1.5 inline-block min-w-full">
+                                                    <div
+                                                        class="text-[10px] text-purple-300 font-semibold mb-0.5 uppercase tracking-wide">
+                                                        Randevu</div>
+                                                    <div class="text-xs text-white flex items-center gap-1">
+                                                        <i class="ri-calendar-line text-purple-400"></i>
+                                                        {{ item.meetingDate || 'Tarih Yok' }}
+                                                        <span v-if="item.meetingTime" class="text-purple-200">({{
+                                                            item.meetingTime }})</span>
+                                                    </div>
+                                                    <div class="text-[10px] text-gray-400 mt-0.5 ml-4"
+                                                        v-if="item.meetingMode">{{ item.meetingMode }}</div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Details & Notes -->
+                                            <td class="px-6 py-4 align-top w-1/3">
+                                                <div class="text-white text-sm mb-1 line-clamp-2" :title="item.summary">
+                                                    {{
+                                                    item.summary }}</div>
+                                                <!-- Note Section -->
+                                                <div class="mt-2 pt-2 border-t border-gray-700/50 flex items-start gap-2 cursor-pointer group/note transition-opacity opacity-70 hover:opacity-100"
+                                                    @click="openNoteModal(item)">
+                                                    <i class="ri-edit-2-line text-gray-500 text-xs mt-0.5"></i>
+                                                    <div class="flex-1">
+                                                        <div v-if="item.notes"
+                                                            class="text-xs text-yellow-200 bg-yellow-900/40 px-2 py-1 rounded border border-yellow-800/50">
+                                                            {{ item.notes }}
+                                                        </div>
+                                                        <div v-else
+                                                            class="text-xs text-gray-500 italic decoration-dashed hover:underline">
+                                                            Not ekle...
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <!-- Chat Button (NEW) -->
+                                            <td class="px-6 py-4 align-top text-right">
+                                                <button @click="openChat(item)"
+                                                    class="bg-gray-800 border border-gray-600 hover:bg-gray-700 text-blue-400 p-2 rounded-full transition-colors relative group/chat"
+                                                    title="Sohbet Geçmişi">
+                                                    <i class="ri-chat-3-line text-lg"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
-                            <div
-                                class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center text-purple-400">
-                                <i class="ri-bar-chart-groupped-line text-xl"></i>
-                            </div>
-                        </div>
-                        <!-- Trend -->
-                        <div
-                            class="bg-gray-800 rounded-xl p-4 border border-gray-700 shadow flex flex-col justify-center">
-                            <p class="text-gray-400 text-xs font-semibold uppercase mb-1">Popüler Kategori (7 gün)</p>
-                            <div v-if="stats.categories && stats.categories.length > 0">
-                                <span class="text-white font-bold">{{ stats.categories[0].category.toUpperCase()
-                                    }}</span>
-                                <span class="text-gray-500 text-sm ml-1">({{ stats.categories[0].count }})</span>
-                            </div>
-                            <div v-else class="text-gray-500 text-sm italic">Veri yok</div>
                         </div>
                     </div>
 
-                    <!-- 2. Filters & Toolbar -->
-                    <div
-                        class="flex flex-col xl:flex-row items-center justify-between gap-4 bg-gray-800/50 p-4 rounded-xl border border-gray-700/50 backdrop-blur-sm sticky top-0 z-10 shadow-lg">
+                    <!-- TAB: SOURCES -->
+                    <div v-show="activeTab === 'SOURCES'" class="space-y-6">
 
-                        <!-- Search Bar -->
-                        <div class="relative w-full xl:w-96 group">
-                            <i
-                                class="ri-search-line absolute left-3 top-2.5 text-gray-500 group-focus-within:text-brand-500 transition-colors"></i>
-                            <input v-model="searchQuery" @input="debounceSearch" type="text"
-                                class="w-full bg-gray-900 border border-gray-700 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-all text-sm"
-                                placeholder="İsim, telefon veya notlarda ara...">
+                        <!-- Add Source Card -->
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
+                            <h3 class="text-white font-bold mb-4 flex items-center gap-2">
+                                <i class="ri-add-circle-fill text-brand-500"></i> Yeni Kaynak Ekle
+                            </h3>
+                            <div class="flex items-center gap-4">
+                                <input v-model="newSourceUrl" type="url"
+                                    class="flex-1 bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 focus:border-brand-500 focus:outline-none"
+                                    placeholder="https://example.com/blog/hukuk-makale-1">
+                                <button @click="addSource" :disabled="!newSourceUrl || addingSource"
+                                    class="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white px-6 py-2 rounded-lg font-semibold transition-colors flex items-center gap-2">
+                                    <i class="ri-save-line" v-if="!addingSource"></i>
+                                    <div v-else
+                                        class="animate-spin rounded-full h-4 w-4 border-2 border-white/50 border-t-white">
+                                    </div>
+                                    Ekle
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-2">Sadece http/https linkler kabul edilir. Ekledikten
+                                sonra "İndeksle" butonuna basmayı unutmayın.</p>
                         </div>
 
-                        <div class="flex flex-wrap items-center gap-3 w-full justify-end">
-                            <!-- Quick Filter: Today's NEW -->
-                            <button @click="toggleTodayNew"
-                                class="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider border transition-all flex items-center gap-2"
-                                :class="filterTodayNew ? 'bg-blue-600/20 text-blue-400 border-blue-500/50 ring-1 ring-blue-500/50' : 'bg-gray-800 text-gray-400 border-gray-600 hover:bg-gray-700'">
-                                <i class="ri-flashlight-fill"></i> Bugün Gelen
-                            </button>
-
-                            <!-- Status Filter -->
-                            <div class="relative">
-                                <select v-model="filterStatus" @change="fetchData"
-                                    class="appearance-none bg-gray-800 border border-gray-600 text-white py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:border-brand-500 text-xs font-medium cursor-pointer hover:bg-gray-700 transition-colors">
-                                    <option value="ALL">Durum: Tümü</option>
-                                    <option value="NEW">Yeni / Bekleyen</option>
-                                    <option value="ARANDI">Arandı</option>
-                                    <option value="RANDEVU">Randevu</option>
-                                    <option value="KAPANDI">Kapandı</option>
-                                    <option value="SPAM">Spam</option>
-                                </select>
-                                <i
-                                    class="ri-arrow-down-s-fill absolute right-2 top-2.5 text-gray-400 pointer-events-none"></i>
+                        <!-- Sources List Table -->
+                        <div class="bg-gray-800 rounded-xl border border-gray-700 overflow-hidden shadow-xl">
+                            <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-700/20">
+                                <h3 class="text-white font-bold flex items-center gap-2">
+                                    <i class="ri-database-2-line text-blue-400"></i> Kaynak Listesi
+                                </h3>
+                                <button @click="fetchSources" class="text-gray-400 hover:text-white transition-colors">
+                                    <i class="ri-refresh-line"></i>
+                                </button>
                             </div>
 
-                            <!-- Category Filter -->
-                            <div class="relative">
-                                <select v-model="filterCategory" @change="fetchData"
-                                    class="appearance-none bg-gray-800 border border-gray-600 text-white py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:border-brand-500 text-xs font-medium cursor-pointer hover:bg-gray-700 transition-colors">
-                                    <option value="ALL">Kategori: Tümü</option>
-                                    <option value="aile">Aile</option>
-                                    <option value="is">İş</option>
-                                    <option value="ceza">Ceza</option>
-                                    <option value="tazminat">Tazminat</option>
-                                    <option value="kira">Kira</option>
-                                    <option value="icra">İcra</option>
-                                    <option value="diger">Diğer</option>
-                                </select>
-                                <i
-                                    class="ri-filter-3-line absolute right-2 top-2.5 text-gray-400 pointer-events-none"></i>
-                            </div>
-
-                            <!-- Date Filter -->
-                            <div class="relative">
-                                <select v-model="filterDays" @change="fetchData"
-                                    class="appearance-none bg-gray-800 border border-gray-600 text-white py-2 pl-3 pr-8 rounded-lg focus:outline-none focus:border-brand-500 text-xs font-medium cursor-pointer hover:bg-gray-700 transition-colors">
-                                    <option value="">Tarih: Tümü</option>
-                                    <option value="1">Son 24 Saat</option>
-                                    <option value="3">Son 3 Gün</option>
-                                    <option value="7">Son 7 Gün</option>
-                                    <option value="30">Son 30 Gün</option>
-                                </select>
-                                <i
-                                    class="ri-calendar-event-line absolute right-2 top-2.5 text-gray-400 pointer-events-none"></i>
-                            </div>
-
-                            <button @click="fetchData"
-                                class="bg-gray-700 hover:bg-gray-600 text-white p-2 rounded-lg transition-colors border border-gray-600"
-                                title="Yenile">
-                                <i class="ri-refresh-line" :class="{ 'animate-spin': loadingData }"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- 3. Table -->
-                    <div
-                        class="bg-gray-800 rounded-xl border border-gray-700 overflow-visible shadow-xl relative min-h-[400px]">
-                        <div class="overflow-visible">
                             <table class="w-full text-left text-sm text-gray-300">
                                 <thead
-                                    class="bg-gray-900/50 text-xs uppercase font-medium text-gray-400 border-b border-gray-700 sticky top-0 z-0">
+                                    class="bg-gray-900/50 text-xs uppercase font-medium text-gray-400 border-b border-gray-700">
                                     <tr>
-                                        <th class="px-6 py-4 w-32">Durum</th>
-                                        <th class="px-6 py-4 w-40">Zaman</th>
-                                        <th class="px-6 py-4 w-56">İletişim</th>
-                                        <th class="px-6 py-4 w-32">Kategori</th>
-                                        <th class="px-6 py-4">Detaylar</th>
-                                        <th class="px-6 py-4 w-20 text-right">Geçmiş</th>
+                                        <th class="px-6 py-4 w-20">Durum</th>
+                                        <th class="px-6 py-4">URL</th>
+                                        <th class="px-6 py-4 w-40">İndeksleme</th>
+                                        <th class="px-6 py-4 w-32 text-right">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-gray-700">
-                                    <tr v-if="!handoffs.length && !loadingData" class="hover:bg-gray-800/50">
-                                        <td colspan="6"
-                                            class="px-6 py-12 text-center text-gray-500 italic flex flex-col items-center">
-                                            <i class="ri-inbox-2-line text-4xl mb-2 opacity-30"></i>
-                                            <span>Kriterlere uygun kayıt bulunamadı.</span>
-                                        </td>
+                                    <tr v-if="!sources.length" class="hover:bg-gray-800/50">
+                                        <td colspan="4" class="px-6 py-8 text-center text-gray-500 italic">Henüz kaynak
+                                            eklenmedi.</td>
                                     </tr>
-
-                                    <tr v-for="(item, index) in handoffs" :key="item.id"
-                                        class="group hover:bg-gray-700/30 transition-colors relative"
-                                        :class="{ 'bg-yellow-900/10 hover:bg-yellow-900/20': isStaleNew(item) }">
-
-                                        <!-- Stale Indicator -->
-                                        <td class="absolute left-0 top-0 bottom-0 w-1 bg-yellow-600"
-                                            v-if="isStaleNew(item)" title="Eskimiş Yeni Talep (24s+)"></td>
-
-                                        <!-- Status -->
-                                        <td class="px-6 py-4 align-top">
-                                            <div class="relative inline-block text-left">
-                                                <button @click.stop="openStatusMenu(item)"
-                                                    class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all border shadow-sm flex items-center gap-1 w-24 justify-center"
-                                                    :class="getStatusColor(item.status)">
-                                                    {{ item.status }}
-                                                    <i class="ri-arrow-down-s-fill opacity-50"></i>
-                                                </button>
-
-                                                <!-- Smart Dropdown -->
-                                                <div v-if="activeMenuId === item.id"
-                                                    class="absolute z-50 w-32 rounded-md shadow-2xl bg-gray-800 ring-1 ring-black ring-opacity-5 border border-gray-600 overflow-hidden"
-                                                    :class="index > handoffs.length - 4 ? 'bottom-full mb-1' : 'top-full mt-1 left-0'">
-                                                    <div class="py-1">
-                                                        <a v-for="st in statusOptions" :key="st"
-                                                            @click.stop="updateStatus(item, st)"
-                                                            class="block px-4 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white cursor-pointer transition-colors flex items-center justify-between"
-                                                            :class="{'bg-gray-700/50 text-brand-500 font-bold': item.status === st}">
-                                                            {{ st }}
-                                                            <i class="ri-check-line" v-if="item.status === st"></i>
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                                <div v-if="activeMenuId === item.id" @click.stop="activeMenuId = null"
-                                                    class="fixed inset-0 z-40 cursor-default"></div>
-                                            </div>
-                                        </td>
-
-                                        <!-- Date (TimeAgo) -->
-                                        <td class="px-6 py-4 align-top">
-                                            <div class="text-white font-medium text-sm"
-                                                :title="formatFullDate(item.date)">
-                                                {{ timeAgo(item.date) }}
-                                            </div>
-                                            <div class="text-gray-500 text-xs mt-1 font-mono">
-                                                {{ formatTime(item.date) }}
-                                            </div>
-                                        </td>
-
-                                        <!-- Contact (Shortcuts) -->
-                                        <td class="px-6 py-4 align-top">
-                                            <div class="text-white font-medium mb-1">{{ item.name }}</div>
-                                            <div class="flex items-center gap-2" v-if="item.phone">
-                                                <!-- Phone Link -->
-                                                <a :href="'tel:' + cleanPhone(item.phone)"
-                                                    class="text-xs bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 px-2 py-1 rounded flex items-center gap-1 transition-colors group/ph"
-                                                    title="Ara">
-                                                    <i
-                                                        class="ri-phone-fill text-gray-400 group-hover/ph:text-white"></i>
-                                                    {{ item.phone }}
-                                                </a>
-                                                <!-- WhatsApp Link -->
-                                                <a :href="'https://wa.me/' + cleanPhone(item.phone)" target="_blank"
-                                                    class="text-green-500 hover:text-green-400 transition-colors p-1"
-                                                    title="WhatsApp">
-                                                    <i class="ri-whatsapp-fill text-lg"></i>
-                                                </a>
-                                            </div>
-                                            <div class="text-gray-500 text-xs mt-1" v-if="item.email">{{ item.email }}
-                                            </div>
-                                        </td>
-
-                                        <!-- Category -->
-                                        <td class="px-6 py-4 align-top">
-                                            <span
-                                                class="inline-flex items-center px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-gray-700 text-gray-300 border border-gray-600 tracking-wider">
-                                                {{ item.category }}
-                                            </span>
-                                            <!-- Meeting Info -->
-                                            <div v-if="item.meetingDate || item.meetingMode"
-                                                class="mt-2 bg-purple-900/30 border border-purple-700/50 rounded p-1.5 inline-block min-w-full">
+                                    <tr v-for="s in sources" :key="s.id"
+                                        class="group hover:bg-gray-700/30 transition-colors">
+                                        <!-- Status Icon -->
+                                        <td class="px-6 py-4">
+                                            <span v-if="s.status === 'indexing'"
+                                                class="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase">
                                                 <div
-                                                    class="text-[10px] text-purple-300 font-semibold mb-0.5 uppercase tracking-wide">
-                                                    Randevu</div>
-                                                <div class="text-xs text-white flex items-center gap-1">
-                                                    <i class="ri-calendar-line text-purple-400"></i>
-                                                    {{ item.meetingDate || 'Tarih Yok' }}
-                                                    <span v-if="item.meetingTime" class="text-purple-200">({{
-                                                        item.meetingTime }})</span>
+                                                    class="animate-spin h-3 w-3 border-2 border-blue-400 border-t-transparent rounded-full">
                                                 </div>
-                                                <div class="text-[10px] text-gray-400 mt-0.5 ml-4"
-                                                    v-if="item.meetingMode">{{ item.meetingMode }}</div>
-                                            </div>
+                                                İşleniyor
+                                            </span>
+                                            <span v-else-if="s.status === 'error'"
+                                                class="text-red-400 font-bold text-xs uppercase flex items-center gap-1"
+                                                :title="s.last_error">
+                                                <i class="ri-error-warning-fill"></i> Hata
+                                            </span>
+                                            <span v-else-if="s.status === 'idle'"
+                                                class="text-green-400 font-bold text-xs uppercase flex items-center gap-1">
+                                                <i class="ri-checkbox-circle-fill"></i> Hazır
+                                            </span>
                                         </td>
 
-                                        <!-- Details & Notes -->
-                                        <td class="px-6 py-4 align-top w-1/3">
-                                            <div class="text-white text-sm mb-1 line-clamp-2" :title="item.summary">{{
-                                                item.summary }}</div>
-                                            <!-- Note Section -->
-                                            <div class="mt-2 pt-2 border-t border-gray-700/50 flex items-start gap-2 cursor-pointer group/note transition-opacity opacity-70 hover:opacity-100"
-                                                @click="openNoteModal(item)">
-                                                <i class="ri-edit-2-line text-gray-500 text-xs mt-0.5"></i>
-                                                <div class="flex-1">
-                                                    <div v-if="item.notes"
-                                                        class="text-xs text-yellow-200 bg-yellow-900/40 px-2 py-1 rounded border border-yellow-800/50">
-                                                        {{ item.notes }}
-                                                    </div>
-                                                    <div v-else
-                                                        class="text-xs text-gray-500 italic decoration-dashed hover:underline">
-                                                        Not ekle...
-                                                    </div>
-                                                </div>
-                                            </div>
+                                        <!-- URL -->
+                                        <td class="px-6 py-4 font-mono text-xs text-white truncate max-w-sm"
+                                            :title="s.url">
+                                            <a :href="s.url" target="_blank"
+                                                class="hover:underline flex items-center gap-1 text-blue-300">
+                                                {{ s.url }} <i class="ri-external-link-line opacity-50"></i>
+                                            </a>
+                                            <div v-if="s.last_error" class="text-red-500 text-[10px] mt-1 truncate">{{
+                                                s.last_error }}</div>
                                         </td>
 
-                                        <!-- Chat Button (NEW) -->
-                                        <td class="px-6 py-4 align-top text-right">
-                                            <button @click="openChat(item)"
-                                                class="bg-gray-800 border border-gray-600 hover:bg-gray-700 text-blue-400 p-2 rounded-full transition-colors relative group/chat"
-                                                title="Sohbet Geçmişi">
-                                                <i class="ri-chat-3-line text-lg"></i>
+                                        <!-- Last Indexed -->
+                                        <td class="px-6 py-4 text-xs text-gray-400">
+                                            <div v-if="s.last_indexed_at">
+                                                {{ formatFullDate(s.last_indexed_at) }}
+                                            </div>
+                                            <div v-else class="opacity-50">-</div>
+                                        </td>
+
+                                        <!-- Actions -->
+                                        <td class="px-6 py-4 text-right flex items-center justify-end gap-2">
+                                            <!-- Toggle Enabled -->
+                                            <button @click="toggleSource(s)"
+                                                class="w-8 h-8 rounded flex items-center justify-center transition-colors border"
+                                                :class="s.enabled ? 'bg-green-900/30 border-green-700 text-green-400 hover:bg-green-900/50' : 'bg-gray-700 border-gray-600 text-gray-400 opacity-50 hover:opacity-100'"
+                                                :title="s.enabled ? 'Aktif' : 'Pasif'">
+                                                <i class="ri-power-line"></i>
+                                            </button>
+
+                                            <!-- Index Now -->
+                                            <button @click="indexSource(s)" :disabled="s.status === 'indexing'"
+                                                class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/20"
+                                                title="Şimdi İndeksle">
+                                                <i class="ri-flashlight-line" v-if="s.status !== 'indexing'"></i>
+                                                <i class="ri-loader-4-line animate-spin" v-else></i>
                                             </button>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
+
+                        <!-- Test Search Card -->
+                        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl">
+                            <h3 class="text-white font-bold mb-4 flex items-center gap-2">
+                                <i class="ri-flask-line text-purple-400"></i> Semantik Arama Testi
+                            </h3>
+                            <div class="flex gap-4">
+                                <input v-model="testQuery" @keydown.enter="searchTest"
+                                    class="flex-1 bg-gray-900 border border-gray-700 text-white rounded-lg px-4 py-2 focus:border-purple-500 focus:outline-none"
+                                    placeholder="Örn: Boşanma davası ne kadar sürer?">
+                                <button @click="searchTest" :disabled="!testQuery || searching"
+                                    class="bg-purple-600 hover:bg-purple-500 text-white px-6 py-2 rounded-lg font-semibold transition-colors disabled:opacity-50">
+                                    <i v-if="!searching" class="ri-search-2-line"></i>
+                                    <div v-else
+                                        class="animate-spin rounded-full h-4 w-4 border-2 border-white/50 border-t-white">
+                                    </div>
+                                </button>
+                            </div>
+
+                            <!-- Results -->
+                            <div v-if="searchResults.length" class="mt-6 space-y-4">
+                                <p class="text-xs text-gray-400 uppercase font-bold tracking-wider">Sonuçlar</p>
+                                <div v-for="(res, idx) in searchResults" :key="idx"
+                                    class="bg-gray-900/50 border border-gray-700 rounded-lg p-4 hover:border-purple-500/30 transition-colors">
+                                    <div class="flex justify-between items-start mb-2">
+                                        <span
+                                            class="text-xs font-mono text-purple-400 bg-purple-900/20 px-2 py-0.5 rounded border border-purple-900/50">
+                                            Score: {{ res.score.toFixed(4) }}
+                                        </span>
+                                        <a :href="res.url" target="_blank"
+                                            class="text-xs text-blue-400 hover:underline truncate max-w-[200px]">{{
+                                            res.url }}</a>
+                                    </div>
+                                    <p class="text-gray-300 text-sm leading-relaxed">{{ res.content }}</p>
+                                </div>
+                            </div>
+                            <div v-else-if="searchPerformed" class="mt-6 text-center text-gray-500 italic">
+                                Alakalı sonuç bulunamadı.
+                            </div>
+                        </div>
+
                     </div>
+                    <!-- END TAB: SOURCES -->
 
                 </div>
             </main>
@@ -520,7 +703,7 @@
     </div>
 
     <script>
-        const { createApp, ref, onMounted, nextTick } = Vue;
+        const { createApp, ref, onMounted, nextTick, watch } = Vue;
 
         createApp({
             setup() {
@@ -530,7 +713,9 @@
                 const password = ref("");
                 const error = ref(null);
                 const submitting = ref(false);
+                const activeTab = ref("HANDOFFS"); // 'HANDOFFS' | 'SOURCES'
 
+                // --- Handoffs State ---
                 const handoffs = ref([]);
                 const stats = ref({});
                 const loadingData = ref(false);
@@ -558,6 +743,17 @@
                 const chatLoading = ref(false);
                 const chatContainer = ref(null);
 
+                // --- Sources State ---
+                const sources = ref([]);
+                const newSourceUrl = ref("");
+                const addingSource = ref(false);
+                const testQuery = ref("");
+                const searching = ref(false);
+                const searchResults = ref([]);
+                const searchPerformed = ref(false);
+
+                const BRAND_KEY = "stein-auf"; // Hardcoded for this admin panel for now
+
                 // Functions
                 const checkAuth = async () => {
                     loading.value = true;
@@ -566,7 +762,7 @@
                         const data = await res.json();
                         if (data.ok) {
                             isLoggedIn.value = true;
-                            initData();
+                            // initData is called after logic
                         }
                     } catch (e) { }
                     loading.value = false;
@@ -575,7 +771,18 @@
                 const initData = () => {
                     fetchStats();
                     fetchData();
+                    if (isLoggedIn.value) fetchSources();
                 };
+
+                // Watch login state to trigger fetches
+                watch(isLoggedIn, (val) => {
+                    if (val) initData();
+                });
+
+                // Watch active tab to refresh sources
+                watch(activeTab, (val) => {
+                    if (val === 'SOURCES') fetchSources();
+                });
 
                 const login = async () => {
                     submitting.value = true;
@@ -590,7 +797,7 @@
                         if (data.ok) {
                             isLoggedIn.value = true;
                             password.value = "";
-                            initData();
+                            // initData triggered by watch
                         } else {
                             error.value = data.error || "Giriş başarısız";
                         }
@@ -605,6 +812,7 @@
                     isLoggedIn.value = false;
                 };
 
+                // --- HANDOFF DATA ---
                 const fetchStats = async () => {
                     try {
                         const res = await fetch("/api/admin/stats");
@@ -638,7 +846,7 @@
                     loadingData.value = false;
                 };
 
-                // Updates
+                // Updates & Status
                 const updateStatus = async (item, newStatus) => {
                     activeMenuId.value = null;
                     if (item.status === newStatus) return;
@@ -668,7 +876,7 @@
 
                 const closeNoteModal = () => {
                     showNoteModal.value = false;
-                    if (!showChatModal.value) currentItem.value = null; // Don't clear if chat is open
+                    if (!showChatModal.value) currentItem.value = null;
                     tempNote.value = "";
                 };
 
@@ -724,6 +932,102 @@
                         chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
                     }
                 };
+
+                // --- SOURCES LOGIC ---
+                const fetchSources = async () => {
+                    try {
+                        // Pass brand_key as query param
+                        const res = await fetch(`/api/admin/sources?brand_key=${BRAND_KEY}`);
+                        const data = await res.json();
+                        // Assume data.sources is array
+                        if (data.sources) sources.value = data.sources;
+                    } catch (e) {
+                        console.error("Fetch Sources Error:", e);
+                    }
+                };
+
+                const addSource = async () => {
+                    if (!newSourceUrl.value) return;
+                    addingSource.value = true;
+                    try {
+                        const res = await fetch("/api/admin/sources", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                brand_key: BRAND_KEY,
+                                url: newSourceUrl.value
+                            })
+                        });
+                        const data = await res.json();
+                        if (res.ok) {
+                            newSourceUrl.value = "";
+                            fetchSources();
+                        } else {
+                            alert("Hata: " + (data.error || "Bilinmeyen hata"));
+                        }
+                    } catch (e) {
+                        alert("Ekleme hatası: " + e.message);
+                    }
+                    addingSource.value = false;
+                };
+
+                const toggleSource = async (s) => {
+                    const newVal = !s.enabled;
+                    // optimistic UI
+                    s.enabled = newVal;
+                    try {
+                        await fetch(`/api/admin/sources/${s.id}`, {
+                            method: "PATCH",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ enabled: newVal })
+                        });
+                    } catch (e) {
+                        s.enabled = !newVal; // revert
+                        alert("Güncelleme hatası");
+                    }
+                };
+
+                const indexSource = async (s) => {
+                    if (confirm(`${s.url} adresini şimdi indekslemek istiyor musunuz? Bu işlem birkaç saniye sürebilir.`)) {
+                        s.status = "indexing"; // Optimistic
+                        try {
+                            const res = await fetch(`/api/admin/sources/${s.id}/index`, { method: "POST" });
+                            const data = await res.json();
+                            if (!res.ok) {
+                                s.status = "error";
+                                s.last_error = data.error;
+                            } else {
+                                // Success, refresh list to see updated date/status
+                                fetchSources();
+                            }
+                        } catch (e) {
+                            s.status = "error";
+                            alert("İndeksleme isteği başarısız");
+                        }
+                    }
+                };
+
+                const searchTest = async () => {
+                    if (!testQuery.value) return;
+                    searching.value = true;
+                    searchPerformed.value = false;
+                    searchResults.value = [];
+
+                    try {
+                        // search?brand_key=...&q=...
+                        const params = new URLSearchParams({ brand_key: BRAND_KEY, q: testQuery.value });
+                        const res = await fetch(`/api/admin/sources/search?${params.toString()}`);
+                        const data = await res.json();
+                        if (data.results) {
+                            searchResults.value = data.results;
+                        }
+                        searchPerformed.value = true;
+                    } catch (e) {
+                        alert("Arama hatası");
+                    }
+                    searching.value = false;
+                };
+
 
                 // Helpers
                 const toggleTodayNew = () => {
@@ -802,27 +1106,39 @@
                     } catch (e) { return ""; }
                 };
 
+                // Init
                 onMounted(() => {
                     checkAuth();
                 });
 
                 return {
-                    loading, isLoggedIn, password, error, submitting,
-                    handoffs, stats, loadingData,
-                    filterStatus, filterDays, filterCategory, filterTodayNew, searchQuery, debounceSearch,
-                    activeMenuId, statusOptions,
-                    showNoteModal, tempNote, currentItem,
-                    showChatModal, chatMessages, chatLoading, chatContainer, // Chat state
-                    login, logout, fetchData, fetchStats, toggleTodayNew,
-                    updateStatus, openStatusMenu, getStatusColor,
-                    openNoteModal, closeNoteModal, saveNote,
-                    openChat, closeChatModal, // Chat Actions
-                    cleanPhone, timeAgo, formatFullDate, formatTime, isStaleNew
+                    // Auth
+                    loading, isLoggedIn, password, error, submitting, login, logout,
+
+                    // Dashboard
+                    activeTab, handoffs, stats, loadingData,
+
+                    // Filters
+                    filterStatus, filterDays, filterCategory, filterTodayNew,
+                    searchQuery, debounceSearch, toggleTodayNew,
+
+                    // Actions
+                    updateStatus, openStatusMenu, activeMenuId, getStatusColor,
+
+                    // Modals
+                    showNoteModal, currentItem, tempNote, openNoteModal, closeNoteModal, saveNote,
+                    showChatModal, chatMessages, chatLoading, openChat, closeChatModal, chatContainer,
+
+                    // Sources
+                    sources, newSourceUrl, addingSource, addSource, fetchSources,
+                    toggleSource, indexSource, testQuery, searching, searchTest, searchResults, searchPerformed,
+
+                    // Utils
+                    isStaleNew, cleanPhone, timeAgo, formatFullDate, formatTime, statusOptions
                 };
             }
         }).mount('#app');
     </script>
-
 </body>
 
 </html>
