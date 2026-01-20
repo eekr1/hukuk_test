@@ -197,7 +197,12 @@ export async function logChatMessage({
 
 export async function getSources(brandKey) {
   const res = await pool.query(
-    `SELECT * FROM sources WHERE brand_key = $1 ORDER BY created_at DESC`,
+    `SELECT s.*, COUNT(sc.id)::int as chunk_count
+     FROM sources s
+     LEFT JOIN source_chunks sc ON s.id = sc.source_id
+     WHERE s.brand_key = $1
+     GROUP BY s.id
+     ORDER BY s.created_at DESC`,
     [brandKey]
   );
   return res.rows;
