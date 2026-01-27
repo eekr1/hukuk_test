@@ -25,6 +25,8 @@
 
     <!-- Vue 3 -->
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <!-- Icons -->
     <link href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css" rel="stylesheet">
@@ -126,6 +128,11 @@
                     <!-- Tabs -->
                     <div
                         class="hidden md:flex space-x-2 ml-6 h-10 bg-gray-900/50 p-1 rounded-lg border border-gray-700">
+                        <button @click="activeTab = 'DASHBOARD'"
+                            class="px-4 rounded-md text-sm font-medium transition-all flex items-center gap-2"
+                            :class="activeTab === 'DASHBOARD' ? 'bg-gray-700 text-white shadow' : 'text-gray-400 hover:text-white'">
+                            <i class="ri-dashboard-line"></i> Özet
+                        </button>
                         <button @click="activeTab = 'HANDOFFS'"
                             class="px-4 rounded-md text-sm font-medium transition-all flex items-center gap-2"
                             :class="activeTab === 'HANDOFFS' ? 'bg-gray-700 text-white shadow' : 'text-gray-400 hover:text-white'">
@@ -151,6 +158,78 @@
             <!-- Main Content -->
             <main class="flex-1 overflow-auto bg-gray-900 p-6 scroll-smooth">
                 <div class="max-w-7xl mx-auto space-y-6">
+
+                    <!-- TAB: DASHBOARD -->
+                    <div v-show="activeTab === 'DASHBOARD'" class="space-y-6">
+                        <!-- Stats Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <!-- Total Chats -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl relative overflow-hidden group">
+                                <div class="relative z-10">
+                                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Toplam Sohbet
+                                    </p>
+                                    <h3 class="text-3xl font-extrabold text-white mt-1">{{ dashboardStats.totalConvs ||
+                                        0 }}</h3>
+                                    <p class="text-green-400 text-xs mt-2 font-medium flex items-center gap-1">
+                                        <i class="ri-arrow-up-line"></i> Son 7 günde {{ dashboardStats.newConvs || 0 }}
+                                        yeni
+                                    </p>
+                                </div>
+                                <i
+                                    class="ri-message-3-line absolute right-4 bottom-4 text-6xl text-gray-700/20 group-hover:scale-110 transition-transform"></i>
+                            </div>
+
+                            <!-- Total Leads -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl relative overflow-hidden group">
+                                <div class="relative z-10">
+                                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Toplam Lead</p>
+                                    <h3 class="text-3xl font-extrabold text-brand-500 mt-1">{{
+                                        dashboardStats.totalHandoffs || 0 }}</h3>
+                                    <p class="text-gray-500 text-xs mt-2">Müşteri Adayı</p>
+                                </div>
+                                <i
+                                    class="ri-user-star-line absolute right-4 bottom-4 text-6xl text-brand-500/10 group-hover:scale-110 transition-transform"></i>
+                            </div>
+
+                            <!-- Conversion Rate -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl relative overflow-hidden group">
+                                <div class="relative z-10">
+                                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Dönüşüm Oranı
+                                    </p>
+                                    <h3 class="text-3xl font-extrabold text-blue-400 mt-1">% {{
+                                        dashboardStats.conversionRate || 0 }}</h3>
+                                    <p class="text-gray-500 text-xs mt-2">Sohbet / Lead</p>
+                                </div>
+                                <i
+                                    class="ri-pie-chart-2-line absolute right-4 bottom-4 text-6xl text-blue-500/10 group-hover:scale-110 transition-transform"></i>
+                            </div>
+
+                            <!-- Avg Response (Placeholder) -->
+                            <div
+                                class="bg-gray-800 rounded-xl p-6 border border-gray-700 shadow-xl relative overflow-hidden group">
+                                <div class="relative z-10">
+                                    <p class="text-gray-400 text-xs font-bold uppercase tracking-wider">Bot Hızı</p>
+                                    <h3 class="text-3xl font-extrabold text-purple-400 mt-1">~1.2s</h3>
+                                    <p class="text-gray-500 text-xs mt-2">Ort. Cevap Süresi</p>
+                                </div>
+                                <i
+                                    class="ri-speed-line absolute right-4 bottom-4 text-6xl text-purple-500/10 group-hover:scale-110 transition-transform"></i>
+                            </div>
+                        </div>
+
+                        <!-- Chart Section -->
+                        <div class="bg-gray-800 rounded-xl border border-gray-700 shadow-xl p-6">
+                            <h3 class="text-white font-bold mb-6 flex items-center gap-2">
+                                <i class="ri-bar-chart-box-line text-brand-500"></i> Günlük Sohbet Trafiği (Son 7 Gün)
+                            </h3>
+                            <div class="w-full h-80">
+                                <canvas id="chartCanvas"></canvas>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- TAB: HANDOFFS -->
                     <div v-show="activeTab === 'HANDOFFS'" class="space-y-6">
@@ -729,7 +808,11 @@
                 const password = ref("");
                 const error = ref(null);
                 const submitting = ref(false);
-                const activeTab = ref("HANDOFFS"); // 'HANDOFFS' | 'SOURCES'
+                const activeTab = ref("DASHBOARD"); // Default Dashboard
+
+                // --- Dashboard State ---
+                const dashboardStats = ref({});
+                let chartInstance = null;
 
                 // --- Handoffs State ---
                 const handoffs = ref([]);
@@ -785,6 +868,7 @@
                 };
 
                 const initData = () => {
+                    fetchDashboard();
                     fetchStats();
                     fetchData();
                     if (isLoggedIn.value) fetchSources();
@@ -798,7 +882,73 @@
                 // Watch active tab to refresh sources
                 watch(activeTab, (val) => {
                     if (val === 'SOURCES') fetchSources();
+                    if (val === 'DASHBOARD') fetchDashboard();
                 });
+
+                // --- DASHBOARD ACTIONS ---
+                const fetchDashboard = async () => {
+                    if (!isLoggedIn.value) return;
+                    try {
+                        const res = await fetch(`/api/stats?brand=${BRAND_KEY}`);
+                        const data = await res.json();
+                        if (data.success) {
+                            dashboardStats.value = data.stats;
+                            renderChart(data.stats.chartData);
+                        }
+                    } catch (e) { console.error(e); }
+                };
+
+                const renderChart = (chartData) => {
+                    if (!chartData) return;
+                    nextTick(() => {
+                        const ctx = document.getElementById('chartCanvas');
+                        if (!ctx) return;
+
+                        if (chartInstance) chartInstance.destroy();
+
+                        const labels = chartData.map(d => d.day);
+                        const points = chartData.map(d => d.count);
+
+                        chartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    label: 'Sohbet Sayısı',
+                                    data: points,
+                                    backgroundColor: '#CEA45E', // brand-500
+                                    borderRadius: 4,
+                                    hoverBackgroundColor: '#B08846'
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: { display: false },
+                                    tooltip: {
+                                        backgroundColor: '#1F2937',
+                                        titleColor: '#fff',
+                                        bodyColor: '#CEA45E',
+                                        borderColor: '#374151',
+                                        borderWidth: 1
+                                    }
+                                },
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        grid: { color: 'rgba(75, 85, 99, 0.2)' },
+                                        ticks: { color: '#9CA3AF', precision: 0 }
+                                    },
+                                    x: {
+                                        grid: { display: false },
+                                        ticks: { color: '#9CA3AF' }
+                                    }
+                                }
+                            }
+                        });
+                    });
+                };
 
                 const login = async () => {
                     submitting.value = true;
