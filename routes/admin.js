@@ -181,10 +181,7 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
         query += ` ORDER BY m.created_at DESC LIMIT 200`;
 
         const result = await pool.query(query, params);
-        console.log("[DEBUG] /handoffs count:", result.rows.length);
-        if (result.rows.length > 0) {
-            console.log("[DEBUG] First row sample:", JSON.stringify(result.rows[0], null, 2));
-        }
+
 
         const rows = result.rows.map(r => {
             // Helper to parse potentially double-stringified JSON
