@@ -615,11 +615,19 @@
                                         <!-- Status Icon -->
                                         <td class="px-6 py-4">
                                             <span v-if="s.status === 'indexing'"
-                                                class="flex items-center gap-2 text-blue-400 font-bold text-xs uppercase">
-                                                <div
-                                                    class="animate-spin h-3 w-3 border-2 border-blue-400 border-t-transparent rounded-full">
+                                                class="flex flex-col text-blue-400 font-bold text-xs uppercase">
+                                                <div class="flex items-center gap-2 mb-1">
+                                                    <div
+                                                        class="animate-spin h-3 w-3 border-2 border-blue-400 border-t-transparent rounded-full">
+                                                    </div>
+                                                    İşleniyor
                                                 </div>
-                                                İşleniyor
+                                                <div class="w-full bg-gray-700 h-1.5 rounded-full overflow-hidden">
+                                                    <div class="bg-blue-500 h-full transition-all duration-500"
+                                                        :style="{ width: (s.index_progress || 0) + '%' }"></div>
+                                                </div>
+                                                <span class="text-[10px] mt-0.5 text-right">%{{ s.index_progress || 0 }}
+                                                    tamam</span>
                                             </span>
                                             <span v-else-if="s.status === 'error'"
                                                 class="text-red-400 font-bold text-xs uppercase flex items-center gap-1"
@@ -716,7 +724,7 @@
                                     <div class="flex justify-between items-start mb-2">
                                         <span
                                             class="text-xs font-mono text-purple-400 bg-purple-900/20 px-2 py-0.5 rounded border border-purple-900/50">
-                                            Score: {{ res.score.toFixed(4) }}
+                                            Score: %{{ (res.score * 100).toFixed(1) }}
                                         </span>
                                         <a :href="res.url" target="_blank"
                                             class="text-xs text-blue-400 hover:underline truncate max-w-[200px]">{{
@@ -893,7 +901,7 @@
                 const searchResults = ref([]);
                 const searchPerformed = ref(false);
 
-                const BRAND_KEY = "stein-auf"; // Hardcoded for this admin panel for now
+                const BRAND_KEY = "hukuk-test"; // Hardcoded for this admin panel for now
 
                 // Computed property for filtered handoffs
                 const filteredHandoffs = computed(() => {
@@ -1248,8 +1256,13 @@
                         // Pass brand_key as query param
                         const res = await fetch(`/api/admin/sources?brand_key=${BRAND_KEY}`);
                         const data = await res.json();
-                        // Assume data.sources is array
-                        if (data.sources) sources.value = data.sources;
+                        if (data.sources) {
+                            sources.value = data.sources;
+                            // If any source is indexing, poll again in 2s
+                            if (sources.value.some(s => s.status === 'indexing')) {
+                                setTimeout(fetchSources, 2000);
+                            }
+                        }
                     } catch (e) {
                         console.error("Fetch Sources Error:", e);
                     }
