@@ -330,3 +330,77 @@ function cosineSimilarity(a, b) {
   }
   return dot / (Math.sqrt(magA) * Math.sqrt(magB) || 1);
 }
+
+/* ================== ANALYTICS (DASHBOARD) ================== */
+export async function getDashboardStats(brandKey) {
+  const client = await pool.connect();
+  try {
+    // 1) Total Conversations (All time)
+    // 2) New Conversations (Last 7 days)
+    // 3) Total Handoffs (Leads)
+    // 4) Messages Count
+
+    // Filtre: brandKey varsa sadece o marka, yoksa hepsi
+    const brandFilter = brandKey ? `WHERE brand_key = $1` : `WHERE 1=1`;
+    const brandParams = brandKey ? [brandKey] : [];
+
+    const totalConvsRes = await client.query(
+      `SELECT COUNT(*) FROM conversations ${brandFilter}`,
+      brandParams
+    );
+    const totalConvs = parseInt(totalConvsRes.rows[0].count, 10);
+
+    const newConvsRes = await client.query(
+      `SELECT COUNT(*) FROM conversations 
+       ${brandFilter} 
+       ${brandKey ? 'AND' : 'WHERE'} created_at > NOW() - INTERVAL '7 days'`,
+      brandParams
+    );
+    const newConvs = parseInt(newConvsRes.rows[0].count, 10);
+
+    // Handoff count from messages
+    // messages tablosunda brand_key yok -> join gerekli
+    // "m.handoff_kind IS NOT NULL" -> bu bir lead
+    const handoffFilter = brandKey
+      ? `WHERE c.brand_key = $1 AND m.handoff_kind IS NOT NULL`
+      : `WHERE m.handoff_kind IS NOT NULL`;
+
+    const totalHandoffsRes = await client.query(
+      `SELECT COUNT(*) FROM messages m
+       JOIN conversations c ON m.conversation_id = c.id
+       ${handoffFilter}`,
+      brandParams
+    );
+    const totalHandoffs = parseInt(totalHandoffsRes.rows[0].count, 10);
+
+    // Conversion Rate (Handoffs / Total Convs)
+    const conversionRate = totalConvs > 0
+      ? ((totalHandoffs / totalConvs) * 100).toFixed(1)
+      : "0";
+
+    // Daily breakdown (Last 7 days) for chart
+    // date_trunc('day', created_at)
+    const chartRes = await client.query(`
+      SELECT TO_CHAR(date_trunc('day', created_at), 'YYYY-MM-DD') as day, COUNT(*) as count
+      FROM conversations 
+      ${brandFilter}
+      GROUP BY 1
+      ORDER BY 1 DESC
+      LIMIT 7
+    `, brandParams);
+
+    // Chart verisini ters çevir (eskiden yeniye)
+    const chartData = chartRes.rows.reverse();
+
+    return {
+      totalConvs,
+      newConvs, // last 7 days
+      totalHandoffs,
+      conversionRate,
+      chartData
+    };
+
+  } finally {
+    client.release();
+  }
+}
