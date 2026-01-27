@@ -1075,13 +1075,33 @@
                     } catch (e) { }
                 };
 
+                const calcStats = () => {
+                    const today = new Date().toISOString().slice(0, 10);
+
+                    stats.value.today = handoffs.value.filter(h => h.date.startsWith(today)).length;
+
+                    stats.value.pending = handoffs.value.filter(h =>
+                        (h.status === 'NEW' || !h.status)
+                    ).length;
+
+                    stats.value.weekly = handoffs.value.length; // Simply total fetched
+
+                    // Categories logic
+                    const cats = {};
+                    handoffs.value.forEach(h => {
+                        const c = h.category || 'diger';
+                        cats[c] = (cats[c] || 0) + 1;
+                    });
+                    stats.value.categories = Object.entries(cats)
+                        .map(([k, v]) => ({ category: k, count: v }))
+                        .sort((a, b) => b.count - a.count);
+                };
+
                 const fetchData = async (silent = false) => {
                     if (!silent) loadingData.value = true;
                     try {
                         let url = '/api/admin/handoffs?';
                         if (filterDays.value) url += `days=${filterDays.value}`;
-                        // Note: Status/Category/Search are handled client-side for "snappiness" in this MVP,
-                        // but normally should be param. For now we fetch "recent" and filter deeply.
 
                         const res = await fetch(url);
                         const json = await res.json();
@@ -1091,15 +1111,16 @@
                             const p = item.handoff_payload || {};
                             const req = p.request || {};
                             const meeting = p.preferred_meeting || {};
+                            const contact = p.contact || {}; // Explicit extraction
 
                             return {
                                 id: item.id,
                                 status: item.admin_status || 'NEW',
                                 notes: item.admin_notes,
                                 date: item.created_at,
-                                name: p.contact?.name || 'İsimsiz',
-                                phone: p.contact?.phone || '',
-                                email: p.contact?.email || '',
+                                name: contact.name || 'İsimsiz',
+                                phone: contact.phone || '',
+                                email: contact.email || '',
                                 category: p.matter?.category || 'Genel',
                                 urgency: p.matter?.urgency,
 
@@ -1109,7 +1130,7 @@
 
                                 // Lead Score
                                 lead_score: item.lead_score !== undefined ? item.lead_score : (p.lead_score || null),
-                                lead_score_reasons: p.score_reasons, // Assuming payload has it or we dont store it in col yet (we didn't add reasons col, only score. So it comes from payload)
+                                lead_score_reasons: p.score_reasons,
 
                                 meetingMode: item.meeting_mode || meeting.mode,
                                 meetingDate: item.meeting_date || meeting.date,
