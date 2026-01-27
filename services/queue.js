@@ -49,12 +49,14 @@ class ScraperQueue {
         if (!source) throw new Error("Source deleted or not found");
 
         // Durumu güncelle: indexing
-        await updateSourceStatus(id, { status: "indexing" });
+        await updateSourceStatus(id, { status: "indexing", progress: 5 });
 
         // 2. Fetch
         let html = "";
         try {
+            await updateSourceStatus(id, { status: "indexing", progress: 10 });
             html = await fetchUrlContent(source.url);
+            await updateSourceStatus(id, { status: "indexing", progress: 40 });
         } catch (fetchErr) {
             throw new Error(`Fetch failed: ${fetchErr.message}`);
         }
@@ -64,6 +66,7 @@ class ScraperQueue {
         try {
             text = await extractMainContent(html, source.url);
             if (!text || text.length < 50) throw new Error("Content too short or empty");
+            await updateSourceStatus(id, { status: "indexing", progress: 50 });
         } catch (parseErr) {
             throw new Error(`Parse failed: ${parseErr.message}`);
         }
@@ -71,11 +74,14 @@ class ScraperQueue {
         // 4. Chunk
         const chunks = chunkText(text);
         if (!chunks.length) throw new Error("No chunks generated");
+        await updateSourceStatus(id, { status: "indexing", progress: 60 });
 
         // 5. Embed
         let embeddedChunks = [];
         try {
+            // progress updates inside generateEmbeddings would be better but this is simpler
             embeddedChunks = await generateEmbeddings(chunks);
+            await updateSourceStatus(id, { status: "indexing", progress: 90 });
         } catch (embedErr) {
             throw new Error(`Embedding failed: ${embedErr.message}`);
         }
