@@ -1107,34 +1107,42 @@
                         const json = await res.json();
 
                         handoffs.value = json.data.map(item => {
-                            // Parse Payload Details
+                            // Backend already provides these fields, use them as primary.
+                            // Payload is kept for specific detail extraction if needed.
                             const p = item.handoff_payload || {};
                             const req = p.request || {};
                             const meeting = p.preferred_meeting || {};
-                            const contact = p.contact || {}; // Explicit extraction
+                            const contact = p.contact || {};
 
                             return {
                                 id: item.id,
-                                status: item.admin_status || 'NEW',
-                                notes: item.admin_notes,
-                                date: item.date || item.created_at,
-                                name: contact.name || 'İsimsiz',
-                                phone: contact.phone || '',
-                                email: contact.email || '',
-                                category: p.matter?.category || 'Genel',
+                                threadId: item.threadId, // CRITICAL: Fix for Chat History
+                                status: item.status || 'NEW',
+                                notes: item.notes || '',
+                                date: item.date,
+
+                                // Priority: Backend direct field -> Payload contact -> Default
+                                name: item.name || contact.name || 'İsimsiz',
+                                phone: item.phone || contact.phone || '',
+                                email: item.email || contact.email || '',
+
+                                category: item.category || p.matter?.category || 'Genel',
                                 urgency: p.matter?.urgency,
 
-                                // New Standardized Fields
-                                summary: req.summary || req.details || 'Özet yok',
+                                // Features
+                                summary: item.summary || req.summary || req.details || 'Özet yok',
                                 key_points: item.summary_key_points || req.key_points || [],
 
                                 // Lead Score
                                 lead_score: item.lead_score !== undefined ? item.lead_score : (p.lead_score || null),
                                 lead_score_reasons: p.score_reasons,
 
-                                meetingMode: item.meeting_mode || meeting.mode,
-                                meetingDate: item.meeting_date || meeting.date,
-                                meetingTime: item.meeting_time || meeting.time,
+                                meetingMode: item.meetingMode || meeting.mode,
+                                meetingDate: item.meetingDate || meeting.date,
+                                meetingTime: item.meetingTime || meeting.time,
+
+                                // Raw payload for any edge cases
+                                handoff_payload: p
                             };
                         });
 
