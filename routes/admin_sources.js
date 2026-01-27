@@ -76,72 +76,22 @@ router.delete("/:id", async (req, res) => {
 
 /* 4. POST /:id/index - Trigger Indexing */
 router.post("/:id/index", async (req, res) => {
-    // We can respond immediately "Indexing started" or await it.
-    // Since user wants to see "Indexing..." spinner, let's await it or do fire-and-forget.
-    // For small pages, awaiting is fine and provides immediate feedback on error.
-
     try {
         const id = req.params.id;
         const source = await getSourceById(id);
         if (!source) return res.status(404).json({ error: "Source not found" });
 
-        // Update status to indexing
-        await updateSourceStatus(id, { status: "indexing" });
+        // Update status to 'pending' immediately
+        await updateSourceStatus(id, { status: "pending" });
 
-        // Start heavyweight process
-        // In steps:
+        // Add to Queue (Fire & Forget)
+        const { scraperQueue } = await import("../services/queue.js");
+        scraperQueue.add(id);
 
-        // 1. Fetch
-        let html = "";
-        try {
-            html = await fetchUrlContent(source.url);
-        } catch (fetchErr) {
-            await updateSourceStatus(id, { status: "error", lastError: fetchErr.message });
-            return res.status(400).json({ error: fetchErr.message });
-        }
-
-        // 2. Extract
-        let text = "";
-        try {
-            text = await extractMainContent(html, source.url);
-            if (text.length < 50) throw new Error("Content too short or empty");
-        } catch (parseErr) {
-            await updateSourceStatus(id, { status: "error", lastError: parseErr.message });
-            return res.status(400).json({ error: parseErr.message });
-        }
-
-        // 3. Chunk
-        const chunks = chunkText(text);
-
-        // 4. Embed
-        let embeddedChunks = [];
-        try {
-            embeddedChunks = await generateEmbeddings(chunks);
-        } catch (embedErr) {
-            await updateSourceStatus(id, { status: "error", lastError: embedErr.message });
-            return res.status(500).json({ error: embedErr.message });
-        }
-
-        // 5. Save (Transaction)
-        try {
-            // First clear old chunks for this source
-            await clearSourceChunks(id);
-            // Insert new
-            await saveSourceChunks(id, source.brand_key, embeddedChunks);
-
-            // 6. Finish
-            await updateSourceStatus(id, { status: "idle", indexed: true });
-
-            return res.json({ success: true, chunks: chunks.length });
-
-        } catch (dbErr) {
-            await updateSourceStatus(id, { status: "error", lastError: dbErr.message });
-            return res.status(500).json({ error: dbErr.message });
-        }
-
+        return res.json({ success: true, message: "Queued for indexing" });
     } catch (e) {
         console.error(e);
-        return res.status(500).json({ error: "Fatal indexing error" });
+        return res.status(500).json({ error: "Failed to queue job" });
     }
 });
 
