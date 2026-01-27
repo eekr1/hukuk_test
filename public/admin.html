@@ -929,7 +929,7 @@
                         const today = new Date().toISOString().slice(0, 10);
                         res = res.filter(h =>
                             (h.status === 'NEW' || !h.status) &&
-                            h.date.startsWith(today)
+                            h.date && h.date.startsWith(today)
                         );
                     }
 
@@ -1078,7 +1078,7 @@
                 const calcStats = () => {
                     const today = new Date().toISOString().slice(0, 10);
 
-                    stats.value.today = handoffs.value.filter(h => h.date.startsWith(today)).length;
+                    stats.value.today = handoffs.value.filter(h => h.date && h.date.startsWith(today)).length;
 
                     stats.value.pending = handoffs.value.filter(h =>
                         (h.status === 'NEW' || !h.status)
@@ -1117,7 +1117,7 @@
                                 id: item.id,
                                 status: item.admin_status || 'NEW',
                                 notes: item.admin_notes,
-                                date: item.created_at,
+                                date: item.date || item.created_at,
                                 name: contact.name || 'İsimsiz',
                                 phone: contact.phone || '',
                                 email: contact.email || '',
