@@ -141,26 +141,41 @@ Produce a handoff when:
 
 Once these details are collected, this is considered consent.
 Do NOT ask for additional confirmation or approval.
-`,
-        `Handoff Format (MUST match exactly):`,
-        `  \\\`\\\`\\\`handoff`,
-        `  {`,
-        `    "handoff": "customer_request",`,
-        `    "payload": {`,
-        `      "contact": { "name": "<Ad Soyad>", "phone": "<+905xx...>", "email": "<varsa@eposta>" },`,
-        `      "preferred_meeting": { "mode": "<online|yüz yüze>", "date": "<YYYY-MM-DD>", "time": "<HH:MM>" },`,
-        `      "matter": { "category": "<aile|ceza|is|icra|kira|tazminat|diger>", "urgency": "<acil|normal>" },`,
-        `      "request": {`,
-        `        "summary": "<tek satır konu özeti>",`,
-        `        "details": "<3-8 cümle olay özeti + ek detaylar>"`,
-        `      }`,
-        `    }`,
-        `  }`,
-        `  \\\`\\\`\\\``,
-        ``,
-        `HANDOFF FORMAT RULES`,
-        `- "date" field MUST be in YYYY-MM-DD format (e.g. 2025-01-15).`,
-        `- If user says relative dates like "tomorrow", "next Monday", calculate it based on CURRENT DATE/TIME above.`,
+
+HANDOFF FORMAT (MUST MATCH EXACTLY)
+  \`\`\`handoff
+  {
+    "handoff": "customer_request",
+    "payload": {
+      "contact": { "name": "<Ad Soyad>", "phone": "<+905xx...>", "email": "<varsa@eposta>" },
+      "preferred_meeting": { "mode": "<online|yüz yüze>", "date": "<YYYY-MM-DD>", "time": "<HH:MM>" },
+      "matter": { "category": "<aile|ceza|is|icra|kira|tazminat|diger>", "urgency": "<acil|normal>" },
+      "request": {
+        "summary": "<TEK CÜMLE case summary. Örnek: 'Kullanıcı, eşinden şiddet gördüğü için acil boşanma ve velayet davası açmak istiyor.'>",
+        "key_points": [
+          "<Bullet 1: Önemli detay (örn. Şiddet raporu var)>",
+          "<Bullet 2: Önemli detay (örn. 2 çocuk var)>",
+          "<Bullet 3: Önemli detay (örn. Tazminat talebi var)>"
+        ],
+        "details": "<Varsa diğer detaylar>"
+      },
+      "lead_score": <0-100 arası tamsayı>,
+      "score_reasons": "<Puanın kısa gerekçesi>"
+    }
+  }
+  \`\`\`
+
+LEAD SCORING RULES (0-100):
+- 90-100 (Hot Lead): Immediate need, clear case, budget ready, high urgency (e.g., detention, domestic violence, deadlines).
+- 70-89 (Warm Lead): Serious intent, questions about procedure/fees, requesting appointment.
+- 50-69 (Moderate): Information seeking, exploring options, not urgent.
+- 0-49 (Cold): Price shoppers, vague generic questions, non-legal/spam.
+
+HANDOFF FORMAT RULES
+- "date" field MUST be in YYYY-MM-DD format (e.g. 2025-01-15).
+- If user says relative dates like "tomorrow", "next Monday", calculate it based on CURRENT DATE/TIME above.
+- "request.summary" MUST be exactly one concise sentence.
+- "request.key_points" MUST be an array of exactly 3 strings (bullet points).`,
         ``,
 
         `FORBIDDEN`,
