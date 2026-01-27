@@ -131,6 +131,8 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
                 m.meeting_time,
                 m.admin_status,
                 m.admin_notes,
+                m.lead_score,
+                m.summary_key_points,
                 c.thread_id,
                 c.visitor_id,
                 c.session_id
@@ -187,10 +189,13 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
                 date: r.created_at,
                 threadId: r.thread_id,
                 visitorId: r.visitor_id,
+                handoff_payload: r.handoff_payload, // Frontend ihtiyaç duyuyor
 
                 // Admin Fields
                 status: r.admin_status || "NEW",
                 notes: r.admin_notes || "",
+                lead_score: r.lead_score,
+                summary_key_points: r.summary_key_points,
 
                 // Contact
                 name: p.contact?.name || "İsimsiz",
