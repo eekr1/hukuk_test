@@ -50,6 +50,7 @@ export async function ensureTables() {
       status TEXT DEFAULT 'idle', -- idle, indexing, error
       last_indexed_at TIMESTAMPTZ,
       last_error TEXT,
+      index_progress INTEGER DEFAULT 0,
       created_at TIMESTAMPTZ DEFAULT now(),
       updated_at TIMESTAMPTZ DEFAULT now()
     );
@@ -87,7 +88,8 @@ export async function ensureTables() {
         ADD COLUMN IF NOT EXISTS lead_score INTEGER,
         ADD COLUMN IF NOT EXISTS summary_key_points JSONB,
         ADD COLUMN IF NOT EXISTS admin_status TEXT DEFAULT 'NEW',
-        ADD COLUMN IF NOT EXISTS admin_notes TEXT;
+        ADD COLUMN IF NOT EXISTS admin_notes TEXT,
+        ADD COLUMN IF NOT EXISTS index_progress INTEGER DEFAULT 0;
     `);
 
     // 3) Index’leri garanti et (kolonlar artık kesin var)
@@ -221,13 +223,16 @@ export async function addSource({ brandKey, url }) {
   return res.rows[0];
 }
 
-export async function updateSourceStatus(id, { status, lastError, indexed }) {
+export async function updateSourceStatus(id, { status, lastError, indexed, progress }) {
   let q = `UPDATE sources SET status = $1, last_error = $2, updated_at = NOW()`;
   const vals = [status, lastError || null];
   let idx = 3;
 
   if (indexed) {
-    q += `, last_indexed_at = NOW()`;
+    q += `, last_indexed_at = NOW(), index_progress = 100`;
+  } else if (progress !== undefined) {
+    q += `, index_progress = $${idx++}`;
+    vals.push(progress);
   }
 
   q += ` WHERE id = $${idx} RETURNING *`;
