@@ -84,6 +84,8 @@ export async function ensureTables() {
         ADD COLUMN IF NOT EXISTS meeting_mode TEXT,
         ADD COLUMN IF NOT EXISTS meeting_date TEXT,
         ADD COLUMN IF NOT EXISTS meeting_time TEXT,
+        ADD COLUMN IF NOT EXISTS lead_score INTEGER,
+        ADD COLUMN IF NOT EXISTS summary_key_points JSONB,
         ADD COLUMN IF NOT EXISTS admin_status TEXT DEFAULT 'NEW',
         ADD COLUMN IF NOT EXISTS admin_notes TEXT;
     `);
@@ -162,9 +164,9 @@ export async function logChatMessage({
       await client.query(
         `
   INSERT INTO messages
-    (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, meta, meeting_mode, meeting_date, meeting_time, created_at)
+    (conversation_id, role, text, raw_text, handoff_kind, handoff_payload, meta, meeting_mode, meeting_date, meeting_time, lead_score, summary_key_points, created_at)
   VALUES
-    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())
   `,
         [
           conversationId,
@@ -176,7 +178,10 @@ export async function logChatMessage({
           meta ? JSON.stringify(meta) : null,
           meetingMode,
           meetingDate,
-          meetingTime
+          meetingTime,
+          // Extract Lead Score & Summary
+          handoff?.payload?.lead_score || null,
+          handoff?.payload?.request?.key_points ? JSON.stringify(handoff.payload.request.key_points) : null
         ]
       );
 
