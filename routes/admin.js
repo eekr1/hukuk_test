@@ -181,15 +181,27 @@ router.get("/handoffs", requireAdmin, async (req, res) => {
         query += ` ORDER BY m.created_at DESC LIMIT 200`;
 
         const result = await pool.query(query, params);
+        console.log("[DEBUG] /handoffs count:", result.rows.length);
+        if (result.rows.length > 0) {
+            console.log("[DEBUG] First row sample:", JSON.stringify(result.rows[0], null, 2));
+        }
 
         const rows = result.rows.map(r => {
-            const p = r.handoff_payload || {};
+            // Helper to parse potentially double-stringified JSON
+            let p = r.handoff_payload || {};
+            if (typeof p === 'string') {
+                try { p = JSON.parse(p); } catch (e) { }
+            }
+            if (typeof p === 'string') { // Try once more if double stringified
+                try { p = JSON.parse(p); } catch (e) { }
+            }
+
             return {
                 id: r.id,
                 date: r.created_at,
                 threadId: r.thread_id,
                 visitorId: r.visitor_id,
-                handoff_payload: r.handoff_payload, // Frontend ihtiyaç duyuyor
+                handoff_payload: p, // Return parsed object
 
                 // Admin Fields
                 status: r.admin_status || "NEW",
@@ -276,6 +288,8 @@ router.get("/conversations/:threadId", requireAdmin, async (req, res) => {
             WHERE c.thread_id = $1
             ORDER BY m.created_at ASC
         `, [threadId]);
+
+        console.log(`[DEBUG] /conversations/${threadId} count:`, result.rows.length);
 
         res.json({ ok: true, messages: result.rows });
     } catch (e) {
